@@ -6,16 +6,16 @@
 > CMake版本须为3.12及以上!<br>
 
 以下是使用的三方库:
-> Crow
-> cpprestsdk
-> OpenSSL
-> OpenCV
-> OpenGL
-> GLU
-> GLUT
-> Freetype
-> qrencode
-> boost
+> Crow<br>
+> cpprestsdk<br>
+> OpenSSL<br>
+> OpenCV<br>
+> OpenGL<br>
+> GLU<br>
+> GLUT<br>
+> Freetype<br>
+> qrencode<br>
+> boost<br>
 > cpp-httplib:https://github.com/yhirose/cpp-httplib<br>
 > nlohmann_json:https://github.com/nlohmann/json<br>
 > spdlog:https://github.com/gabime/spdlog<br>
