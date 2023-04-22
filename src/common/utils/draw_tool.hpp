@@ -1,0 +1,214 @@
+/*
+ * @File	  : draw_tool.hpp
+ * @Coding	  : utf-8
+ * @Author    : Bing
+ * @Time      : 2023/04/22 14:37
+ * @Introduce : 绘制相关的工具
+*/
+
+
+#pragma once
+
+#ifndef DRAW_TOOL
+#define DRAW_TOOL
+
+//#define DEBUG
+
+#include <stdexcept>
+#include <memory>
+#include <string_view>
+#include <opencv2/opencv.hpp>
+#include <opencv2/core.hpp>  
+#include <opencv2/highgui.hpp>  
+#include <opencv2/imgproc.hpp> 
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/freetype.hpp>
+#include <ft2build.h>
+#include <cmath>
+#include <numbers>
+#include <qrencode.h>
+using namespace cv;
+
+class DrawTool final{
+public:
+    inline static cv::Mat DrawQRcode(const std::string& url,
+        bool reserver = false,
+        int mul_size_x = 10, int mul_size_y = 10,
+        int bound_size_x = 30, int bound_size_y = 30
+    ) {
+
+        using namespace cv;
+        QRcode* code = QRcode_encodeString(url.c_str(), 0, QR_ECLEVEL_H, QR_MODE_8, 1);
+        if (code == nullptr) {
+            throw std::logic_error("code为NULL");
+        }
+
+        Mat img = Mat(code->width, code->width, CV_8U);
+
+        for (int i = 0; i < code->width; ++i) {
+            for (int j = 0; j < code->width; ++j)
+            {
+                img.at<uchar>(i, j) = (code->data[i * code->width + j] & 0x01) == 0x01 ? 0 : 255;
+            }
+        }
+        resize(img, img, Size(img.rows * mul_size_x, img.cols * mul_size_y), 0, 0, INTER_NEAREST);
+
+        Mat result = Mat::zeros(img.rows + bound_size_x, img.cols + bound_size_y, CV_8U);
+        //白底
+        result = 255 - result;
+        //转换成彩色
+        cvtColor(result, result, COLOR_GRAY2BGR);
+        cvtColor(img, img, COLOR_GRAY2BGR);
+        //建立roi
+        Rect roi_rect = Rect((result.rows - img.rows) / 2, (result.cols - img.rows) / 2, img.cols, img.rows);
+        //roi关联到目标图像，并把源图像复制到指定roi
+        img.copyTo(result(roi_rect));
+
+        if(reserver)cv::bitwise_not(result, result);
+
+        QRcode_free(code);
+        return result;
+    }
+
+
+
+    // 创建一个全单色的相同尺寸的Mat，作为处理后的图片
+    inline static cv::Mat createPureMat(cv::Mat img, const int alpha = 255, const int B = 0, const int G = 0, const int R = 0) {
+        Mat processed = Mat::zeros(img.rows, img.cols, CV_8UC4);
+
+        for (int r = 0; r < img.rows; r++) {
+            for (int c = 0; c < img.cols; c++) {
+                // 获取当前像素点的RGBA通道值
+                Vec4b pixel = img.at<Vec4b>(r, c);
+                // 如果alpha通道值不为0，将该像素点设置为黑色
+                if (pixel[3] != 0) {
+                    processed.at<Vec4b>(r, c)[0] = B; // B通道
+                    processed.at<Vec4b>(r, c)[1] = G; // G通道
+                    processed.at<Vec4b>(r, c)[2] = R; // R通道
+                    processed.at<Vec4b>(r, c)[3] = alpha; // alpha通道
+                }
+            }
+        }
+        return processed;
+    }
+
+    inline static void drawParallelogram(cv::Mat& img, const cv::Rect& rect, float alpha = 0.0f, float beta = 0.0f, const bool flip = false) {
+        //cv::Rect rect(230, 100, img.size().width, img.size().height);
+        alpha = convert_angle_to_radians<float>(alpha);
+        beta = convert_angle_to_radians<float>(beta);
+        float
+            x0{ static_cast<float>(rect.x) },
+            y0{ static_cast<float>(rect.y) },
+            h{ static_cast<float>(rect.height) },
+            w{ static_cast<float>(rect.width) },
+            x1{ h / tan(alpha) },
+            x2{ (-tan(-beta) * x1 + h + tan(alpha) * w - tan(alpha) * x1) / (tan(alpha) - tan(-beta)) },
+            y2{ tan(-beta) * (x2 - x1) + h };
+
+#ifdef DEBUG
+        std::cout << "Debug:\n"
+            << "x0:" << x0 << "\n"
+            << "y0:" << y0 << "\n"
+            << "x1:" << x1 << "\n"
+            << "x2:" << x2 << "\n"
+            << "y2:" << y2 << "\n"
+            << "h:" << h << "\n"
+            << "w:" << w << "\n"
+
+            << std::endl;
+#endif // DEBUG
+
+        // 创建一个新的掩码（mask），并将其全部填充为不透明
+        cv::Mat mask(img.size(), CV_8UC1, cv::Scalar(255));
+
+        // 创建一组点，将其设置为矩形的四个顶点
+        std::vector<cv::Point> points;
+
+        // 是否翻转
+        if (!flip) {
+            points.push_back(cv::Point(x0, h - y0));
+            points.push_back(cv::Point(w - x1, y2));
+            points.push_back(cv::Point(w - x0, y0));
+            points.push_back(cv::Point(x1, h - y2));
+        }
+        else
+        {
+            points.push_back(cv::Point(x1 + x0, h - y0));
+            points.push_back(cv::Point(x2, y2));
+            points.push_back(cv::Point(w - x1 - x0, y0));
+            points.push_back(cv::Point(w - x2, h - y2));
+        }
+
+        // 创建一个新的掩码，并将其填充为完全透明
+        cv::Mat polyMask(img.size(), CV_8UC1, cv::Scalar(0));
+
+        // 在polyMask上绘制我们想要的多边形
+        cv::fillConvexPoly(polyMask, points, cv::Scalar(255));
+
+        // 将mask与polyMask相乘，并将结果存储在mask中
+        mask = mask.mul(polyMask);
+
+        // 将被切掉的部分的不透明度设置为0
+        cv::Mat channels1[4];
+        cv::split(img, channels1);
+        channels1[3] = mask.clone();
+        cv::merge(channels1, 4, img);
+    }
+
+    inline static void copyToPointAlpha(
+        cv::Mat img2, cv::Mat& img1, const int left, const int top,
+        const float resize_x = 1.0f, const float resize_y = 1.0f,
+        const int right = 0, const int bottom = 0) {
+        resize(img2, img2, cv::Size(), resize_x, resize_y);
+
+        int ini_x{ img2.size().width }, ini_y{ img2.size().height };
+
+        copyMakeBorder(img2, img2, top, bottom, left, right, BORDER_CONSTANT, Scalar(0, 0, 0, 0));
+
+        cv::Rect roi(0, 0, img2.cols, img2.rows);
+
+        // 限制ROI区域在img1的边界内
+        roi &= cv::Rect(0, 0, img2.cols, img2.rows);
+
+        // 将img2复制到img1的指定坐标处
+        img2 = img2(roi);
+
+        Mat mat(img1.rows, img1.cols, CV_8UC4);//#define CV_8UC4 CV_MAKETYPE(CV_8U,4)可以创建-----8位无符号的四通道---带透明色的RGB图像 
+
+        for (int i = 0; i < img2.rows; i++) {
+            for (int j = 0; j < img2.cols; j++) {
+                //Mat::at()取值或改变某点的像素值比较耗时，可以采用Mat的模板子类Mat_<T>
+                //Mat类中的at方法作用：用于获取图像矩阵某点的值或改变某点的值。
+                double temp = img2.at<Vec4b>(i, j)[3] / 255.0;
+                mat.at<Vec4b>(i, j)[0] = (1 - temp) * img1.at<Vec4b>(i, j)[0] + temp * img2.at<Vec4b>(i, j)[0];
+                mat.at<Vec4b>(i, j)[1] = (1 - temp) * img1.at<Vec4b>(i, j)[1] + temp * img2.at<Vec4b>(i, j)[1];
+                mat.at<Vec4b>(i, j)[2] = (1 - temp) * img1.at<Vec4b>(i, j)[2] + temp * img2.at<Vec4b>(i, j)[2];
+                mat.at<Vec4b>(i, j)[3] = (1 - temp) * img1.at<Vec4b>(i, j)[3] + temp * img2.at<Vec4b>(i, j)[3];
+            }
+        }
+        roi = Rect(0, 0, ini_x + left, ini_y + top);
+
+        // 裁剪新Mat对象
+        mat = mat(std::move(roi)).clone();
+
+        roi = cv::Rect(0, 0, mat.cols, mat.rows);
+
+        // 限制ROI区域在img1的边界内
+        roi &= cv::Rect(0, 0, img1.cols, img1.rows);
+
+        // 将img2复制到img1的指定坐标处
+        cv::Mat roi_img1 = img1(roi);
+        cv::Mat roi_img2 = mat(cv::Rect(cv::Point(0, 0), roi.size()));
+        roi_img2.copyTo(roi_img1);
+    }
+private:
+    // 角度转弧度
+    template <typename T>
+    inline static T convert_angle_to_radians(T angle)
+    {
+        return angle * (T(1) / 180.0) * std::numbers::pi;
+    }
+
+};
+
+#endif
