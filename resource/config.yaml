@@ -6,8 +6,8 @@ log:
 db:
   path: ./localDB.db
 server:
+  concurrency: 0
   port: 8099
-  cors: false
   token:
      secret: HWqBXLYj8$z$ezR9gnihO8K13m#soNN^8WWuHMKDz12Vo6IWb3e6N!M4aHV@tCF3
      issuer: Bing

@@ -155,6 +155,7 @@ public:
         cv::merge(channels1, 4, img);
     }
 
+    // img2复制到img1的指定坐标(处理alpha)
     inline static void copyToPointAlpha(
         cv::Mat img2, cv::Mat& img1, const int left, const int top,
         const float resize_x = 1.0f, const float resize_y = 1.0f,
@@ -201,6 +202,26 @@ public:
         cv::Mat roi_img2 = mat(cv::Rect(cv::Point(0, 0), roi.size()));
         roi_img2.copyTo(roi_img1);
     }
+    
+    // img2复制到img1的指定坐标
+    inline static void copyToPoint(
+        cv::Mat img2, cv::Mat& img1, const int x = 0, const int y = 0,
+        const float resize_fx = 1.0f, const float resize_fy = 1.0f
+    ) {
+        // 缩放img2为原大小的50%
+        cv::resize(img2, img2, cv::Size(), resize_fx, resize_fy);
+
+        // 计算ROI区域
+        cv::Rect roi(x, y, img2.cols, img2.rows);
+
+        // 限制ROI区域在img1的边界内
+        roi &= cv::Rect(0, 0, img1.cols, img1.rows);
+
+        // 将img2复制到img1的指定坐标处
+        cv::Mat roi_img1 = img1(roi);
+        cv::Mat roi_img2 = img2(cv::Rect(cv::Point(0, 0), roi.size()));
+        roi_img2.copyTo(roi_img1);
+    };
 private:
     // 角度转弧度
     template <typename T>

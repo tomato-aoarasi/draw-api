@@ -15,9 +15,15 @@
 #include <optional>
 #include "prevent_inject.hpp"
 #include "sql_util.hpp"
+#include "sqlite_modern_cpp.h"
 
 using valueType = std::pair<std::string, std::string>;
 class SQL_Handle : public SQL_Util {
+private:
+	std::unordered_map<std::string, valueType> m_content{};
+	std::vector<decltype(m_content)> m_contents{};
+	const std::filesystem::path& m_path{ SQL_Util::ms_db_path };
+	sqlite::database m_db{ m_path.c_str() };
 public:
 	SQL_Handle(void) = default;
 	~SQL_Handle(void) {
@@ -66,7 +72,7 @@ public:
 
 
 	// 获取单条SQL
-	auto& simpleQuery(std::string_view sqlSentence) {
+	[[deprecated("过时了")]] auto& simpleQuery(std::string_view sqlSentence) {
 		this->m_content.clear();
 
 		sqlite3pp::database db(m_path.c_str());
@@ -82,7 +88,7 @@ public:
 	}
 
 	// 获取多条SQL
-	auto& moreQuery(std::string_view sqlSentence) {
+	[[deprecated("过时了")]] auto& moreQuery(std::string_view sqlSentence) {
 		sqlite3pp::database db(m_path.c_str());
 		sqlite3pp::query qry(db, sqlSentence.data());
 
@@ -108,18 +114,8 @@ public:
 		return this->m_contents;
 	}
 
-#ifdef DEBUG
-	void test(void) {
-		/*contentValue<std::string, std::string> p;
-		p.second;*/
-	};
-#endif
+	sqlite::database& DB = this->m_db;
 protected:
 	//sqlite3pp::database& m_db{ SQL_Util::ms_db };
-private:
-	std::unordered_map<std::string, valueType> m_content{};
-	std::vector<decltype(m_content)> m_contents{};
-	const std::filesystem::path& m_path{ SQL_Util::ms_db_path };
 };
-
 #endif // !SQL_HANDLE

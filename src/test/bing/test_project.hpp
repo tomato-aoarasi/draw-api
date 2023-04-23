@@ -13,32 +13,18 @@
 #include <bcrypt.h>
 #include "dao/bottle.hpp"
 #include <sqlite_modern_cpp.h>
+#include "crow.h"
+#include "common/utils/draw_tool.hpp"
+#include <opencv2/opencv.hpp>
+#include <qrencode.h>
+
+using namespace std::string_literals;
 
 //#define WARNING_CONTENT  
 using _uint64 = unsigned long long int;
 
 class TestProject final{
 public:
-	// img2复制到img1的指定坐标
-	inline static void copyToPoint(
-		cv::Mat img2, cv::Mat& img1, const int x = 0, const int y = 0,
-		const float resize_fx = 1.0f, const float resize_fy = 1.0f
-	) {
-		// 缩放img2为原大小的50%
-		cv::resize(img2, img2, cv::Size(), resize_fx, resize_fy);
-
-		// 计算ROI区域
-		cv::Rect roi(x, y, img2.cols, img2.rows);
-
-		// 限制ROI区域在img1的边界内
-		roi &= cv::Rect(0, 0, img1.cols, img1.rows);
-
-		// 将img2复制到img1的指定坐标处
-		cv::Mat roi_img1 = img1(roi);
-		cv::Mat roi_img2 = img2(cv::Rect(cv::Point(0, 0), roi.size()));
-		roi_img2.copyTo(roi_img1);
-	}
-
 	static void testModernSqlite() {
 		try {
 			// creates a database file 'dbfile.db' if it does not exists.
@@ -156,6 +142,88 @@ public:
 		std::cout << "\"database\" : " << bcrypt::validatePassword(password, "$2a$10$2MKm.McjEdc/O.PXArxEeOh4dBROZ1BoLswMP8lG8bwRBDZdqhRoe") << std::endl;
 	}
 
+	// 二维码测试
+	static void testMethod5(void) {
+		cv::Mat QRCode{ DrawTool::DrawQRcode("https://www.bilibili.com/", true) };
+		cv::imwrite("QRCode.jpg", QRCode);
+	}
+
+	// crow框架测试
+	static void testMethod6(void) {
+		crow::SimpleApp app;
+		app.bindaddr("0.0.0.0").port(9961);
+
+		CROW_ROUTE(app, "/hello_test_wtf")
+			.methods("GET"_method)([](const crow::request& req) {
+
+			json data;
+			data["message"] = "Hello World!";
+
+			// 设置响应头为 application/json
+			crow::response resp;
+			resp.set_header("Content-Type", "application/json");
+
+			// 将 JSON 数据作为响应体返回
+			resp.body = data.dump();
+
+
+			return resp;
+				});
+		CROW_ROUTE(app, "/testPage/<string>")([](std::string name) { // 
+			auto page = crow::mustache::load("index.html"); // 
+			crow::mustache::context ctx({ {"person", name} }); // 
+			return page.render(ctx); //
+			});
+
+		CROW_ROUTE(app, "/hello")
+			.methods("GET"_method)
+			([](const crow::request& req) {
+			std::string par = req.url_params.get("par");
+			return "Hello, World!"s + par;
+				});
+
+		CROW_ROUTE(app, "/postTest")
+			.methods("POST"_method)
+			([](const crow::request& req) {
+			std::string data = req.body;
+#if 0
+			for (const auto& item : req.headers) {
+				std::cout << item.first <<
+					"\t" << item.second << std::endl;
+			}
+#endif
+			std::cout << "token : " << req.get_header_value("token") << std::endl;
+			return "result -> "s + data;
+				});
+
+		// websocket
+		CROW_ROUTE(app, "/ws")
+			.websocket()
+			.onopen([&](crow::websocket::connection& conn) {
+			std::cout << "建立ws连接" << std::endl;
+				})
+			.onclose([&](crow::websocket::connection& conn, const std::string& reason) {
+					std::cout << "关闭ws连接" << std::endl;
+				})
+					.onmessage([&](crow::websocket::connection& conn, const std::string& data, bool is_binary) {
+					if (is_binary)
+						std::cout << "binary -> ";
+					else
+						std::cout << "normal -> ";
+					std::cout << "receive: " << data << std::endl;
+					conn.send_text("HelloTo");
+	});
+
+				// 全局异常处理
+				CROW_ROUTE(app, "/")([]() {
+					crow::response res("404 Not Found has been changed to this message.");
+					res.code = 404;
+					return res;
+					});
+				//set the port, set the app to run on multiple threads, and run the app
+
+		app.multithreaded().run();
+	}
 #ifdef WARNING_CONTENT
 	static void testMoreSQLQuery(void) {
 		StartWatch();

@@ -1,22 +1,22 @@
-// PocoWebsite.h: 标准系统包含文件的包含文件
-// 或项目特定的包含文件。
-
 #pragma once
+
+#ifndef MAIN_H
+#define MAIN_H
+
+// 设置1为开启跨域访问(想要性能问题的话建议关闭,使用反向代理)
+#define CORS_OPEN  0  
+
 #include <iostream>
 
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/daily_file_sink.h"
 #include "fmt/format.h"
 
-
 namespace std {
     using fmt::format;
     using fmt::format_error;
     using fmt::formatter;
 }
-
-#define CORS_OPEN  0  
-
 
 #include <common/utils/sql_util.hpp>
 #include <common/utils/log_system.hpp>
@@ -33,7 +33,6 @@ namespace std {
 #include <ft2build.h>
 #include <cmath>
 #include <numbers>
-#include <qrencode.h>
 #include <openssl/sha.h>  
 #include <hiredis/hiredis.h>
 #include <boost/coroutine2/all.hpp>
@@ -73,23 +72,20 @@ inline void init(void) {
     SQL_Util::initialized();
 }
 
-void set_default_headers(crow::request& req, crow::response& res, std::function<void()> next) {
-    res.add_header("Server", ""); // 隐藏Server字段
-    next();
-}
-
+// 启动项
 inline void start(void){
     const std::string
-        secret{ Config::getConfig()["server"]["token"]["secret"].as<std::string>() },
-        issuer{ Config::getConfig()["server"]["token"]["issuer"].as<std::string>() };
-    const unsigned short port{ Config::getConfig()["server"]["port"].as<unsigned short>() };
-    const bool has_cors{ Config::getConfig()["server"]["cors"].as<bool>() };
+        secret{ Config::Parameter::getSecret()},
+        issuer{ Config::Parameter::getIssuer()};
+    const ushort port{ Config::Parameter::getPort()};
+    const ubyte concurrency{ Config::Parameter::getConcurrency() };
 
-    CrowApp app; //define your crow application
+    /* =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-= */
+
+    CrowApp app; 
 
     // 日志等级
-    crow::logger::setLogLevel(crow::LogLevel::CRITICAL);
-    //app.loglevel(crow::LogLevel::Info);
+    crow::logger::setLogLevel(crow::LogLevel::DEBUG);
 
 #if CORS_OPEN
     // 跨域访问
@@ -104,55 +100,11 @@ inline void start(void){
     }
 #endif
     
-
     app.bindaddr("0.0.0.0").port(port);
-    CROW_ROUTE(app, "/hello_test_wtf")
-        .methods("GET"_method)([](const crow::request& req) {
-
-        json data;
-        data["message"] = "Hello World!";
-
-        // 设置响应头为 application/json
-        crow::response resp;
-        resp.set_header("Content-Type", "application/json");
-
-        // 将 JSON 数据作为响应体返回
-        resp.body = data.dump();
-
-
-        return resp;
-            });
-
+    
     BottleService* bottle{ new BottleServiceImpl() };
     BottleController bottle_controller(app, secret, issuer, bottle);
     bottle_controller.controller();
-
-    CROW_ROUTE(app, "/testPage/<string>")([](std::string name) { // 
-        auto page = crow::mustache::load("index.html"); // 
-        crow::mustache::context ctx({ {"person", name} }); // 
-        return page.render(ctx); //
-        });
-
-    CROW_ROUTE(app, "/hello")
-        .methods("GET"_method)
-        ([](const crow::request& req) {
-        std::string par = req.url_params.get("par");
-        return "Hello, World!"s + par;
-            });
-
-    CROW_ROUTE(app, "/postTest")
-        .methods("POST"_method)
-        ([](const crow::request& req) {
-        std::string data = req.body;
-#if 0
-        for (const auto& item : req.headers) {
-            std::cout << item.first <<
-                "\t" << item.second << std::endl;
-        }
-#endif
-        std::cout << "token : " << req.get_header_value("token") << std::endl;
-        return "result -> "s + data;
-            });
 
     //define your endpoint at the root directory
     CROW_ROUTE(app, "/test").methods("GET"_method)([]() {
@@ -260,38 +212,13 @@ inline void start(void){
     response.body = imgStr;
     return response;
         });
+    //set the port, set the app to run on multiple threads, and run the app
 
-
-    // websocket
-    CROW_ROUTE(app, "/ws")
-        .websocket()
-        .onopen([&](crow::websocket::connection& conn) {
-        std::cout << "建立ws连接" << std::endl;
-            })
-        .onclose([&](crow::websocket::connection& conn, const std::string& reason) {
-                std::cout << "关闭ws连接" << std::endl;
-            })
-                .onmessage([&](crow::websocket::connection& conn, const std::string& data, bool is_binary) {
-                if (is_binary)
-                    std::cout << "binary -> ";
-                else
-                    std::cout << "normal -> ";
-                std::cout << "receive: " << data << std::endl;
-                conn.send_text("HelloTo");
-                    });
-
-            // 全局异常处理
-            CROW_ROUTE(app, "/")([]() {
-                crow::response res("404 Not Found has been changed to this message.");
-                res.code = 404;
-                return res;
-                });
-            //set the port, set the app to run on multiple threads, and run the app
-            app.concurrency(8).run();
-            // 下面只能4个线程
-            //app.multithreaded().run();
-
-            delete bottle;
+    if (concurrency != 0)
+        app.concurrency(concurrency).run();
+    else
+        app.multithreaded().run();
+    delete bottle;
 }
 
 
@@ -378,4 +305,4 @@ inline cv::Mat addFont(cv::Mat& dstImg, const int X_OFFSETINIT, const int Y_OFFS
     return result;
 }
 
-// TODO: 在此处引用程序需要的其他标头。
+#endif

@@ -15,8 +15,43 @@
 #include "common/exception/file_exception.hpp"
 #include "yaml-cpp/yaml.h"
 
-class Config final {
+using ubyte = unsigned char;
+using ushort = unsigned short;
+
+class Config final{
 public:
+	// 获取参数
+	class Parameter final {
+		friend class Config;
+	protected:
+		inline static std::string ms_secret{}, ms_issuer{};
+		inline static ushort ms_port{};
+		inline static ubyte ms_concurrency{};
+	public:
+		static const std::string& getSecret(void){
+			return ms_secret;
+		}
+
+		static const std::string& getIssuer(void){
+			return ms_issuer;
+		}
+
+		static const ushort& getPort(void){
+			return ms_port;
+		}
+
+		static const ubyte& getConcurrency(void){
+			return ms_concurrency;
+		}
+	private:
+		Parameter(void) = delete;
+		~Parameter(void) = delete;
+		Parameter(const Parameter&) = delete;
+		Parameter(Parameter&&) = delete;
+		Parameter& operator=(const Parameter&) = delete;
+		Parameter& operator=(Parameter&&) = delete;
+	};
+
 	static void initialized(){
 		const bool 
 			yaml_whether_exists { std::filesystem::exists(yaml_path) },
@@ -31,6 +66,13 @@ public:
 		else{
 			throw self::file_exception("YAML file doesn't exist.");
 		}
+		
+		/* =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-= */
+
+		Parameter::ms_secret = getConfig()["server"]["token"]["secret"].as<std::string>();
+		Parameter::ms_issuer = getConfig()["server"]["token"]["issuer"].as<std::string>();
+		Parameter::ms_port = getConfig()["server"]["port"].as<ushort>();
+		Parameter::ms_concurrency = getConfig()["server"]["concurrency"].as<ubyte>();
 	}
 	//得到一个YAML配置文件
 	static const YAML::Node& getConfig(void) {
@@ -45,6 +87,7 @@ private:
 	Config(Config&&) = delete;
 	Config& operator=(const Config&) = delete;
 	Config& operator=(Config&&) = delete;
+
 	inline static const std::filesystem::path
 		yaml_path{ "config.yaml" },
 		yml_path { "config.yml"  };
