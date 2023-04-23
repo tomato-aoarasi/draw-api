@@ -10,7 +10,7 @@
 #pragma once
 
 #ifndef HTTP_UTIL
-#define HTTP_UTIL
+#define HTTP_UTIL  
 #include <memory>
 #include <nlohmann/json.hpp>
 #include "jwt-cpp/jwt.h"

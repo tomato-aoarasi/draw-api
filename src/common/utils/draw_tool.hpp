@@ -10,9 +10,9 @@
 #pragma once
 
 #ifndef DRAW_TOOL
-#define DRAW_TOOL
+#define DRAW_TOOL  
 
-//#define DEBUG
+//#define DEBUG  
 
 #include <stdexcept>
 #include <memory>
@@ -173,7 +173,7 @@ public:
         // 将img2复制到img1的指定坐标处
         img2 = img2(roi);
 
-        Mat mat(img1.rows, img1.cols, CV_8UC4);//#define CV_8UC4 CV_MAKETYPE(CV_8U,4)可以创建-----8位无符号的四通道---带透明色的RGB图像 
+        Mat mat(img1.rows, img1.cols, CV_8UC4);//#define CV_8UC4 CV_MAKETYPE(CV_8U,4)  可以创建-----8位无符号的四通道---带透明色的RGB图像 
 
         for (int i = 0; i < img2.rows; i++) {
             for (int j = 0; j < img2.cols; j++) {

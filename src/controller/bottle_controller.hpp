@@ -9,8 +9,6 @@
 #pragma once
 #ifndef BOTTLE_CONTROLLER
 #define BOTTLE_CONTROLLER
-// O3优化
-#pragma GCC optimize(3)
 #include <future>
 #include <string_view>
 #include <chrono>
@@ -19,16 +17,23 @@
 #include "nlohmann/json.hpp"
 #include "bcrypt.h"
 #include <service/impl/bottle_service_impl.hpp>
+#include <configuration/config.hpp>
 
-using App = crow::App<crow::CORSHandler>;
 using json = nlohmann::json;
 using namespace std::chrono;
 using namespace std::chrono_literals;
 using StatusCode = HTTPUtil::StatusCodeHandle::status;
 using StatusCodeHandle = HTTPUtil::StatusCodeHandle;
-class BottleController final {
+
+#if CORS_OPEN
+using CrowApp = crow::App<crow::CORSHandler>;
+#else
+using CrowApp = crow::SimpleApp;
+#endif
+
+class BottleController {
 public:
-    BottleController(App& app, std::string_view secret, std::string_view issuer, BottleService* bottle) :
+    BottleController(CrowApp& app, std::string_view secret, std::string_view issuer, BottleService* bottle) :
         m_app{ app }, m_secret{ secret }, m_issuer{ issuer }, m_bottle{ bottle } {
     };
     ~BottleController() = default;
@@ -85,52 +90,52 @@ public:
                 return resp;
                 });
 
-        //CROW_ROUTE(m_app, "/verify")
-        //    .methods("POST"_method)([&](const crow::request& req) {
-        //        constexpr auto timeout{ 200ms };
-        //        crow::response resp;
-        //        resp.set_header("Content-Type", "application/json");
-        //        //auto [pass , msg]  { verifyToken(req, resp) };
+        /*CROW_ROUTE(m_app, "/verify")
+            .methods("POST"_method)([&](const crow::request& req) {
+                constexpr auto timeout{ 200ms };
+                crow::response resp;
+                resp.set_header("Content-Type", "application/json");
+                //auto [pass , msg]  { verifyToken(req, resp) };
 
-        //        verify_token_result result;
-        //        auto j = json::parse(req.body);
-        //        std::string passwd{ j["password"] };
-        //        auto decode_token{ jwt::decode(req.get_header_value("token")) };
-        //        const auto passwd_jwt{ decode_token.get_payload_claim("password").as_string() };
-        //        bool verify_passwd{ bcrypt::validatePassword(passwd, passwd_jwt) };
+                verify_token_result result;
+                auto j = json::parse(req.body);
+                std::string passwd{ j["password"] };
+                auto decode_token{ jwt::decode(req.get_header_value("token")) };
+                const auto passwd_jwt{ decode_token.get_payload_claim("password").as_string() };
+                bool verify_passwd{ bcrypt::validatePassword(passwd, passwd_jwt) };
 
-        //        if (!verify_passwd)
-        //        {
-        //            result.msg = "Password verification failed";
-        //            result.pass = false;
-        //            result.code = 401;
-        //            return result;
-        //        }
+                if (!verify_passwd)
+                {
+                    result.msg = "Password verification failed";
+                    result.pass = false;
+                    result.code = 401;
+                    return result;
+                }
 
-        //        auto verifier = jwt::verify()
-        //            .allow_algorithm(jwt::algorithm::hs256{ this->m_secret })
-        //            .with_issuer(this->m_issuer);
+                auto verifier = jwt::verify()
+                    .allow_algorithm(jwt::algorithm::hs256{ this->m_secret })
+                    .with_issuer(this->m_issuer);
 
-        //        try {
-        //            verifier.verify(decode_token);
-        //        }
-        //        catch (const std::exception& e) {
-        //            //std::cout << "except" << std::endl;
-        //            result.msg = e.what();
-        //            result.pass = false;
-        //            result.code = 401;
-        //            return result;
-        //        }
-        //        result.pass = true;
-        //        result.code = 200;
-        //        //std::cout << "final" << std::endl;
-        //        if (result.pass) {
-        //            resp.body = "ok";
-        //        }else{
-        //            resp.code = result.code;
-        //            resp.body = StatusCodeHandle::getSimpleJsonResult(result.code, result.msg).dump();
-        //        }
-        //    });
+                try {
+                    verifier.verify(decode_token);
+                }
+                catch (const std::exception& e) {
+                    //std::cout << "except" << std::endl;
+                    result.msg = e.what();
+                    result.pass = false;
+                    result.code = 401;
+                    return result;
+                }
+                result.pass = true;
+                result.code = 200;
+                //std::cout << "final" << std::endl;
+                if (result.pass) {
+                    resp.body = "ok";
+                }else{
+                    resp.code = result.code;
+                    resp.body = StatusCodeHandle::getSimpleJsonResult(result.code, result.msg).dump();
+                }
+            });*/
     }
 private:
     struct verify_token_result {
@@ -139,7 +144,7 @@ private:
         int code;
     };
     BottleController() = delete;
-    App& m_app;
+    CrowApp& m_app;
     const std::string m_secret;
     const std::string m_issuer;
     BottleService* m_bottle;

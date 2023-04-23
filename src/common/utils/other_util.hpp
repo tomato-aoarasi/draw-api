@@ -6,6 +6,11 @@
  * @Introduce : 其他工具
 */
 
+#pragma once
+
+#ifndef OTHER_UTIL
+#define OTHER_UTIL  
+
 class OtherUtil final {
 public:
     std::string base64_encode(const unsigned char* input, int length) {
@@ -33,3 +38,5 @@ public:
     }
 private:
 };
+
+#endif // OTHER_UTIL

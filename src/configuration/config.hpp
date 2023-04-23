@@ -9,7 +9,7 @@
 #pragma once
 
 #ifndef CONFIG_HPP
-#define CONFIG_HPP
+#define CONFIG_HPP  
 #include <fstream>
 #include <filesystem>
 #include "common/exception/file_exception.hpp"

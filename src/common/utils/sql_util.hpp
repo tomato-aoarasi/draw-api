@@ -9,7 +9,7 @@
 #pragma once
 
 #ifndef SQL_UTIL_HPP
-#define SQL_UTIL_HPP
+#define SQL_UTIL_HPP  
 #include <memory>
 #include <regex>
 #include <filesystem>

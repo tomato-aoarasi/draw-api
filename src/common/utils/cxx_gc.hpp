@@ -7,7 +7,7 @@
 */
 
 #ifndef defined(GC_HPP)
-#define GC_HPP
+#define GC_HPP  
 
 #include <set>
 #include <map>
@@ -17,11 +17,11 @@
 
 #if THREAD_SAFETY
 #include <mutex>
-#define MUTEXT_LOCK mMutex.lock()
-#define MUTEXT_UNLOCK mMutex.unlock()
+#define MUTEXT_LOCK  mMutex.lock()  
+#define MUTEXT_UNLOCK  mMutex.unlock()  
 #else
-#define MUTEXT_LOCK 
-#define MUTEXT_UNLOCK 
+#define MUTEXT_LOCK  
+#define MUTEXT_UNLOCK  
 #endif
 
 // Base class for all objects that are tracked by

@@ -9,7 +9,7 @@
 #pragma once
 
 #ifndef LOG_SYSTEM_HPP
-#define LOG_SYSTEM_HPP
+#define LOG_SYSTEM_HPP  
 
 #include <iostream>
 

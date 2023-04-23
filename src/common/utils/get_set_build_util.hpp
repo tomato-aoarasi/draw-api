@@ -9,7 +9,7 @@
 #pragma once
 
 #ifndef GET_SET_BUILD_UTIL_HPP
-#define GET_SET_BUILD_UTIL_HPP
+#define GET_SET_BUILD_UTIL_HPP  
 
 
 //PropertyBuilderByTypeName 用于生成类的成员变量
@@ -18,35 +18,35 @@
 //type_shortname为变量类型的缩写,例如bool缩写为b,int缩写为i,double缩写为d等
 //method_name为方法名称
 //access_permission为变量的访问权限(public, protected, private)
-#define PropertyBuilder_ReadWrite(variable_type, type_shortname, method_name, access_permission)\
-access_permission:\
-    variable_type m_##type_shortname##method_name;\
-public:\
-    inline variable_type get##method_name(void)\
-    {\
-        return m_##type_shortname##method_name;\
-    }\
-    inline void set##method_name(variable_type v)\
-    {\
-        m_##type_shortname##method_name = v;\
-    }\
+#define PropertyBuilder_ReadWrite(variable_type, type_shortname, method_name, access_permission)\  
+access_permission:\  
+    variable_type m_##type_shortname##method_name;\  
+public:\  
+    inline variable_type get##method_name(void)\  
+    {\  
+        return m_##type_shortname##method_name;\  
+    }\  
+    inline void set##method_name(variable_type v)\  
+    {\  
+        m_##type_shortname##method_name = v;\  
+    }\  
 
-#define PropertyBuilder_ReadOnly(variable_type, type_shortname, method_name, access_permission)\
-access_permission:\
-    variable_type m_##type_shortname##method_name;\
-public:\
-    inline variable_type get##method_name(void) const\
-    {\
-        return m_##type_shortname##method_name;\
-    }\
+#define PropertyBuilder_ReadOnly(variable_type, type_shortname, method_name, access_permission)\  
+access_permission:\  
+    variable_type m_##type_shortname##method_name;\  
+public:\  
+    inline variable_type get##method_name(void) const\  
+    {\  
+        return m_##type_shortname##method_name;\  
+    }\  
 
-#define PropertyBuilder_WriteOnly(variable_type, type_shortname, method_name, access_permission)\
-access_permission:\
-    variable_type m_##type_shortname##method_name;\
-public:\
-    inline void set##method_name(variable_type v)\
-    {\
-        m_##type_shortname##method_name = v;\
-    }\
+#define PropertyBuilder_WriteOnly(variable_type, type_shortname, method_name, access_permission)\  
+access_permission:\  
+    variable_type m_##type_shortname##method_name;\  
+public:\  
+    inline void set##method_name(variable_type v)\  
+    {\  
+        m_##type_shortname##method_name = v;\  
+    }\  
 
 #endif

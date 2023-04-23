@@ -8,8 +8,8 @@
 
 #pragma once
 
-#ifndef BOTTLE_SERVICE_IMPL_HPP
-#define BOTTLE_SERVICE_IMPL_HPP
+#ifndef BOTTLE_SERVICE_IMPL_HPP 
+#define BOTTLE_SERVICE_IMPL_HPP  
 #include "dao/user.hpp"
 #include "service/bottle_service.hpp"
 #include "common/utils/sql_handle.hpp"
@@ -25,6 +25,7 @@ public:
 		++ms_count;
 	};
 	~BottleServiceImpl() = default;
+
 	std::string getBottle(int id) override {
 		SQL_Handle sql_helper;
 		int max_id{ std::stoi(sql_helper.simpleQuery("SELECT bottleMainId from bottle order by bottleMainId desc LIMIT 1").at("bottleMainId").second) },
@@ -48,7 +49,7 @@ public:
 					content.at("filePath").second,
 					std::stoull(content.at("timeStamp").second),
 					std::stoi(content.at("reportCount").second),
-					std::stoi(content.at("available").second)
+					static_cast<bool>(std::stoi(content.at("available").second))
 				};
 				contents.emplace_back(bottle_temp.getJson());
 			};
@@ -69,7 +70,7 @@ public:
 				content.at("filePath").second,
 				std::stoull(content.at("timeStamp").second),
 				std::stoi(content.at("reportCount").second),
-				std::stoi(content.at("available").second)
+				static_cast<bool>(std::stoi(content.at("available").second))
 				};
 				contents.emplace_back(bottle.getJson());
 			}
@@ -85,17 +86,17 @@ public:
 		SQL_Handle handle;
 		auto content{ handle.simpleQuery("SELECT * from user where uid = 0") };
 		User user{
-			std::stoul(content.at("uid").second),
+			static_cast<unsigned int>(std::stoul(content.at("uid").second)),
 			content.at("userName").second,
 			content.at("password").second,
-			std::stoul(content.at("role").second),
+			static_cast<bool>(std::stoul(content.at("role").second)),
 			std::stoull(content.at("registrarDate").second)
 		};
 
 		auto time_point{ std::chrono::system_clock::now() };
 		auto expires{ time_point + std::chrono::days(365) };
 
-		std::time_t timestamp{ user.getRegistrarDate() };
+		std::time_t timestamp{ static_cast<std::time_t>(user.getRegistrarDate()) };
 		// 转换为本地时间
 		std::tm t = *std::localtime(&timestamp);
 
@@ -123,5 +124,4 @@ public:
 private:
 	inline static int ms_count{ 0 };
 };
-
 #endif // !BOTTLE_SERVICE_IMPL_HPP

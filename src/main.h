@@ -15,6 +15,9 @@ namespace std {
     using fmt::formatter;
 }
 
+#define CORS_OPEN  0  
+
+
 #include <common/utils/sql_util.hpp>
 #include <common/utils/log_system.hpp>
 #include <configuration/config.hpp>
@@ -50,9 +53,16 @@ namespace std {
 
 #include FT_FREETYPE_H
 
-//#define CROW_ENABLE_SSL
+#if CORS_OPEN
+using CrowApp = crow::App<crow::CORSHandler>;
+#else
+using CrowApp = crow::SimpleApp;
+#endif
+
+
+//#define CROW_ENABLE_SSL  
 using namespace std::string_literals;
-#define CROW_ENFORCE_WS_SPEC
+#define CROW_ENFORCE_WS_SPEC  
 
 inline cv::Mat addFont(cv::Mat& dstImg, const int X_OFFSETINIT, const int Y_OFFSETINIT);
 
@@ -63,28 +73,55 @@ inline void init(void) {
     SQL_Util::initialized();
 }
 
+void set_default_headers(crow::request& req, crow::response& res, std::function<void()> next) {
+    res.add_header("Server", ""); // 隐藏Server字段
+    next();
+}
+
 inline void start(void){
     const std::string
         secret{ Config::getConfig()["server"]["token"]["secret"].as<std::string>() },
         issuer{ Config::getConfig()["server"]["token"]["issuer"].as<std::string>() };
     const unsigned short port{ Config::getConfig()["server"]["port"].as<unsigned short>() };
+    const bool has_cors{ Config::getConfig()["server"]["cors"].as<bool>() };
 
-    crow::App<crow::CORSHandler> app; //define your crow application
+    CrowApp app; //define your crow application
+
     // 日志等级
     crow::logger::setLogLevel(crow::LogLevel::CRITICAL);
     //app.loglevel(crow::LogLevel::Info);
 
+#if CORS_OPEN
     // 跨域访问
-    auto& cors = app.get_middleware<crow::CORSHandler>();
-    cors
-        .global()
-        .headers("origin, x-requested-with, accept, access-control-allow-origin, authorization, content-type")
-        .methods("POST"_method, "GET"_method, "PUT"_method, "DELETE"_method, "PATCH"_method, "OPTIONS"_method)
-        //.prefix("/cors")
-        .origin("*");
+    if (has_cors) {
+        auto& cors = app.get_middleware<crow::CORSHandler>();
+        cors
+            .global()
+            .headers("origin, x-requested-with, accept, access-control-allow-origin, authorization, content-type")
+            .methods("POST"_method, "GET"_method, "PUT"_method, "DELETE"_method, "PATCH"_method, "OPTIONS"_method)
+            //.prefix("/cors")
+            .origin("*");
+    }
+#endif
+    
 
     app.bindaddr("0.0.0.0").port(port);
+    CROW_ROUTE(app, "/hello_test_wtf")
+        .methods("GET"_method)([](const crow::request& req) {
 
+        json data;
+        data["message"] = "Hello World!";
+
+        // 设置响应头为 application/json
+        crow::response resp;
+        resp.set_header("Content-Type", "application/json");
+
+        // 将 JSON 数据作为响应体返回
+        resp.body = data.dump();
+
+
+        return resp;
+            });
 
     BottleService* bottle{ new BottleServiceImpl() };
     BottleController bottle_controller(app, secret, issuer, bottle);

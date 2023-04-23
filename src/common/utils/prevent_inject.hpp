@@ -9,7 +9,7 @@
 #pragma once
 
 #ifndef PREVENT_INJECT_HPP
-#define PREVENT_INJECT_HPP
+#define PREVENT_INJECT_HPP  
 #include <string_view>
 
 namespace self {

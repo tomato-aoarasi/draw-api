@@ -8,7 +8,7 @@
 
 #pragma once
 #ifndef USER_HPP
-#define USER_HPP
+#define USER_HPP  
 #include <string_view>
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"

@@ -7,7 +7,7 @@
 */
 
 #ifndef BOTTLE_SERVICE_HPP
-#define BOTTLE_SERVICE_HPP
+#define BOTTLE_SERVICE_HPP  
 
 class BottleService {
 public:

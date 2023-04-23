@@ -9,7 +9,7 @@
 #pragma once
 
 #ifndef FILE_EXCEPTION_HPP
-#define FILE_EXCEPTION_HPP
+#define FILE_EXCEPTION_HPP  
 #include <exception>
 #include <stdexcept>
 
