@@ -11,30 +11,30 @@
 #ifndef OTHER_UTIL
 #define OTHER_UTIL  
 
+#include <string>
+#include <string_view>
+#include <vector>
+#include "crow.h"
+
 class OtherUtil final {
 public:
-    std::string base64_encode(const unsigned char* input, int length) {
-        BIO* bmem, * b64;
-        BUF_MEM* bptr;
+    /// <summary>
+    /// 判断vector<string>是否存在特定值
+    /// </summary>
+    /// <param name="keys">crow param的列表</param>
+    /// <param name="val">是否含有特定字符串</param>
+    /// <returns>true为存在,false为不存在</returns>
+    inline static bool hasParam(const std::vector<std::string>& keys, std::string_view val) {
+        return std::find(keys.cbegin(), keys.cend(), val) != keys.cend();
+    }
 
-        b64 = BIO_new(BIO_f_base64());
-        bmem = BIO_new(BIO_s_mem());
-        b64 = BIO_push(b64, bmem);
-        BIO_write(b64, input, length);
-        BIO_flush(b64);
-        BIO_get_mem_ptr(b64, &bptr);
-
-        std::string result(bptr->data, bptr->length);
-
-        BIO_free_all(b64);
-
-        result.erase(std::remove(result.begin(), result.end(), '\n'), result.end());
-        result.erase(std::remove(result.begin(), result.end(), '\r'), result.end());
-
-        delete bmem;
-        delete b64;
-        delete bptr;
-        return result;
+    inline static bool verifyParam(const crow::request& req, std::string_view val) {
+        bool has_value{ hasParam(req.url_params.keys(), val) };
+        if (has_value)
+        {
+            return !std::string(req.url_params.get(val.data())).empty();
+        }
+        else return false;
     }
 private:
 };

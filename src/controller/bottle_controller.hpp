@@ -10,8 +10,10 @@
 #ifndef BOTTLE_CONTROLLER
 #define BOTTLE_CONTROLLER
 #include <future>
+#include <memory>
 #include <string_view>
 #include <chrono>
+#include <configuration/config.hpp>
 #include "crow.h"
 #include "common/utils/http_util.hpp"
 #include "nlohmann/json.hpp"
@@ -25,17 +27,10 @@ using namespace std::chrono_literals;
 using StatusCode = HTTPUtil::StatusCodeHandle::status;
 using StatusCodeHandle = HTTPUtil::StatusCodeHandle;
 
-#if CORS_OPEN
-using CrowApp = crow::App<crow::CORSHandler>;
-#else
-using CrowApp = crow::SimpleApp;
-#endif
-
-class BottleController {
+class BottleController final {
 public:
-    BottleController(CrowApp& app, std::string_view secret, std::string_view issuer, BottleService* bottle) :
-        m_app{ app }, m_secret{ secret }, m_issuer{ issuer }, m_bottle{ bottle } {
-    };
+    explicit BottleController(CrowApp& app, std::string_view secret, std::string_view issuer, std::unique_ptr<BottleService> bottle) :
+        m_app{ app }, m_secret{ secret }, m_issuer{ issuer }, m_bottle{ std::move(bottle) } {};
     ~BottleController() = default;
     const inline void controller(void) {
         CROW_ROUTE(m_app, "/hello_test")
@@ -147,7 +142,7 @@ private:
     CrowApp& m_app;
     const std::string m_secret;
     const std::string m_issuer;
-    BottleService* m_bottle;
+    std::unique_ptr<BottleService> m_bottle;
 };
 
 #endif

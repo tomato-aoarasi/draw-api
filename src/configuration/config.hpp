@@ -11,12 +11,34 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP  
 #include <fstream>
+#include <string>
 #include <filesystem>
 #include "common/exception/file_exception.hpp"
 #include "yaml-cpp/yaml.h"
+#include "crow.h"
+#include "crow/middlewares/cors.h"
+#include "fmt/format.h"
 
+
+using namespace std::string_literals;
 using ubyte = unsigned char;
 using ushort = unsigned short;
+
+namespace std {
+	using fmt::format;
+	using fmt::format_error;
+	using fmt::formatter;
+}
+
+
+#if CORS_OPEN
+using CrowApplication = crow::App<crow::CORSHandler>;
+#else
+using CrowApplication = crow::SimpleApp;
+#endif
+
+#define CrowApp CrowApplication
+#define Json nlohmann::json
 
 class Config final{
 public:
@@ -92,6 +114,13 @@ private:
 		yaml_path{ "config.yaml" },
 		yml_path { "config.yml"  };
 	inline static YAML::Node ms_config{ YAML::LoadFile(yaml_path) };
+};
+
+class Global final {
+public:
+	inline static const std::string BingAPI{ "http://150.158.89.12:6680"s};
+	inline static const std::string PhiUri{ "/api/pgr/findBySong"s };
+	inline static const std::string PhiUrl { BingAPI + PhiUri};
 };
 
 #endif

@@ -19,6 +19,9 @@ set(CATKIN_TOPLEVEL TRUE)
 set(CMAKE_BUILD_TYPE "Release")
 set(CMAKE_CXX_STANDARD 20)
 
+# 开启C++20 export/module
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fmodules-ts")
+
 # 输出项目信息
 message(STATUS ${PROJECT_NAME} ${PROJECT_VERSION_MAJOR} ${PROJECT_VERSION_MINOR})
 

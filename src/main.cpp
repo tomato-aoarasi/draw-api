@@ -1,6 +1,8 @@
 #include "main.h"
 
 #ifdef DEBUG
+#include <test/bing/test_project.hpp>
+
 int main(int argc, char* argv[]) {
     std::cout << "\033[44m--* DEBUG START *--\033[0m\n";
 
