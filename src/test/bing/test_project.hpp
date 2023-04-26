@@ -17,6 +17,7 @@
 #include "common/utils/draw_tool.hpp"
 #include <opencv2/opencv.hpp>
 #include <qrencode.h>
+#include <hiredis/hiredis.h>
 
 using namespace std::string_literals;
 

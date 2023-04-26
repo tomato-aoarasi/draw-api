@@ -94,7 +94,7 @@ public:
             oss << std::put_time(&local_tm, "%Y-%m-%d %H:%M:%S");
 
             json result;
-            result["data"] = oss.str();
+            result["date"] = oss.str();
             result["code"] = state;
 
             if (!msg.empty()) {

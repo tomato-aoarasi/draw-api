@@ -11,13 +11,13 @@
 #ifndef PHIGROS_SERVICE_HPP
 #define PHIGROS_SERVICE_HPP  
 
-#include <string>
+#include <string_view>
 #include <opencv2/opencv.hpp>
 
 class PhigrosService {
 public:
 	virtual ~PhigrosService() = default;
-	virtual cv::Mat drawSongInfomation(int) = 0;
+	virtual cv::Mat drawSongInfomation(int,bool,std::string_view) = 0;
 private:
 };
 

@@ -14,6 +14,7 @@
 #include <string>
 #include <memory>
 #include <algorithm>
+#include "common/exception/self_exception.hpp"
 #include <configuration/config.hpp>
 #include "common/utils/http_util.hpp"
 #include "crow.h"
@@ -25,6 +26,8 @@
 
 using StatusCodeHandle = HTTPUtil::StatusCodeHandle;
 
+constexpr int amount_spaces{ 2 };
+
 class PhigrosController final {
 public:
 	~PhigrosController() = default;
@@ -34,21 +37,28 @@ public:
 
 	const inline void controller(void) {
         CROW_ROUTE(m_app, "/test").methods("GET"_method)([&](const crow::request& req) {
-            bool is_exception{ false };
             crow::response response;
             try {
-                const std::string PARAM{ "songId" };
+                constexpr const char* PARAMS[] { "songId","QRCodeContent" };
                 int song_id{};
+                bool is_qr_code{ false };
+                std::string_view content{};
 
-                if (OtherUtil::verifyParam(req, PARAM)) {
-                    song_id = std::stoi(req.url_params.get(PARAM));
+                if (OtherUtil::verifyParam(req, PARAMS[0])) {
+                    song_id = std::stoi(req.url_params.get(PARAMS[0]));
                 } else {
                     response.set_header("Content-Type", "application/json");
                     response.code = 400;
-                    response.write(StatusCodeHandle::getSimpleJsonResult(400, "parameter 'songId' required and parameter cannot be empty.").dump());
+                    response.write(StatusCodeHandle::getSimpleJsonResult(400, "parameter 'songId' required and parameter cannot be empty.").dump(amount_spaces));
                     return response;
                 }
-                cv::Mat result{ m_phigros_service->drawSongInfomation(song_id)};
+                if (OtherUtil::verifyParam(req, PARAMS[1])) {
+                    content = req.url_params.get(PARAMS[1]);
+                    is_qr_code = true;
+                }
+
+                cv::Mat result{ m_phigros_service->drawSongInfomation(
+                    std::move(song_id),std::move(is_qr_code),std::move(content))};
 
                 std::vector<uchar> data;
                 cv::imencode(".png", std::move(result), data);
@@ -57,10 +67,12 @@ public:
                 response.set_header("Content-Type", "image/png");
                 response.body = imgStr;
             return response;
+            } catch (const self::TimeoutException& e) {
+                response.write(StatusCodeHandle::getSimpleJsonResult(408, "Data API request timeout").dump(amount_spaces));
             } catch (const std::runtime_error& e) {
-                response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what()).dump()); is_exception = true;
+                response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what()).dump(amount_spaces));
             } catch (const std::exception& e) {
-                response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what()).dump()); is_exception = true;
+                response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what()).dump(amount_spaces));
             }
             response.set_header("Content-Type", "application/json");
             response.code = 500;

@@ -6,6 +6,7 @@ log:
 db:
   path: ./localDB.db
 server:
+  resource-path: /home/Soft/NginxWeb/html/main/
   concurrency: 0
   port: 8099
   token:

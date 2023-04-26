@@ -13,7 +13,7 @@
 #include <fstream>
 #include <string>
 #include <filesystem>
-#include "common/exception/file_exception.hpp"
+#include "common/exception/self_exception.hpp"
 #include "yaml-cpp/yaml.h"
 #include "crow.h"
 #include "crow/middlewares/cors.h"
@@ -39,6 +39,16 @@ using CrowApplication = crow::SimpleApp;
 
 #define CrowApp CrowApplication
 #define Json nlohmann::json
+
+class Global final {
+	friend class Config;
+public:
+	inline static const std::string BingAPI{ "http://150.158.89.12:6680"s };
+	inline static const std::string PhiUri{ "/api/pgr/findBySong"s };
+	inline static const std::string PhiUrl{ BingAPI + PhiUri };
+	inline static std::string ResourcePath{};
+	inline static std::string PhiResourcePath{};
+};
 
 class Config final{
 public:
@@ -86,7 +96,7 @@ public:
 			ms_public_config = YAML::LoadFile(yaml_path);
 		}
 		else{
-			throw self::file_exception("YAML file doesn't exist.");
+			throw self::FileException("YAML file doesn't exist.");
 		}
 		
 		/* =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-= */
@@ -95,6 +105,8 @@ public:
 		Parameter::ms_issuer = getConfig()["server"]["token"]["issuer"].as<std::string>();
 		Parameter::ms_port = getConfig()["server"]["port"].as<ushort>();
 		Parameter::ms_concurrency = getConfig()["server"]["concurrency"].as<ubyte>();
+		Global::ResourcePath = getConfig()["server"]["resource-path"].as<std::string>();
+		Global::PhiResourcePath = Global::ResourcePath + "phigros/"s;
 	}
 	//得到一个YAML配置文件
 	static const YAML::Node& getConfig(void) {
@@ -114,13 +126,6 @@ private:
 		yaml_path{ "config.yaml" },
 		yml_path { "config.yml"  };
 	inline static YAML::Node ms_config{ YAML::LoadFile(yaml_path) };
-};
-
-class Global final {
-public:
-	inline static const std::string BingAPI{ "http://150.158.89.12:6680"s};
-	inline static const std::string PhiUri{ "/api/pgr/findBySong"s };
-	inline static const std::string PhiUrl { BingAPI + PhiUri};
 };
 
 #endif

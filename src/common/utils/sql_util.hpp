@@ -15,7 +15,7 @@
 #include <filesystem>
 #include "common/utils/log_system.hpp"
 #include "configuration/config.hpp"
-#include "common/exception/file_exception.hpp"
+#include "common/exception/self_exception.hpp"
 #include "sqlite3pp.h"
 
 class SQL_Util {
@@ -34,12 +34,12 @@ public:
 			spdlog::info(std::format("文件{}存在", path.filename().string()));
 			if (!std::regex_match(path.string(), std::move(reg))) {
 				spdlog::error("文件后缀名错误,非db为后缀");
-				throw self::file_exception("suffix match error");
+				throw self::FileException("suffix match error");
 			}
 		}
 		else {
 			spdlog::error(std::format("文件{}不存在", path.filename().string()));
-			throw self::file_exception(std::format("not found file:{}", path.filename().string()).c_str());
+			throw self::FileException(std::format("not found file:{}", path.filename().string()).c_str());
 		}
 
 		spdlog::info("数据库路径获取成功!");
