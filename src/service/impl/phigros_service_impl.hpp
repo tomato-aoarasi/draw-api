@@ -136,7 +136,8 @@ public:
             diff.emplace_back(cv::imread("draw/phi/diff/SP.png", cv::IMREAD_UNCHANGED));
             diffSign.emplace_back(cv::imread("draw/phi/diff/DiifFont/SP.png", cv::IMREAD_UNCHANGED));
 
-            diffText["rating"] = OtherUtil::retainDecimalPlaces(data["rating"]["sp"].get<float>(),1);
+            std::string rating{ OtherUtil::retainDecimalPlaces(data["rating"]["sp"].get<float>(),1) };
+            diffText["rating"] = rating == "-1.0"s ? "  ?"s : rating;
             diffText["note"] = std::to_string(data["note"]["sp"].get<int>());
             diffText["design"] = data["design"]["sp"].get<std::string>();
 
@@ -343,8 +344,9 @@ public:
                 freetype2->putText(result, diffTexts.at(i).at("rating") + " / " + diffTexts.at(i).at("note"), Point(h, v) + cv::Point(3, 2), 72, Scalar(5, 5, 5), -1, cv::LINE_AA, true);
                 freetype2->putText(result, diffTexts.at(i).at("rating") + " / " + diffTexts.at(i).at("note"), Point(h, v), 72, Scalar(215, 215, 215), -1, cv::LINE_AA, true);
                 
-                freetype2->putText(result, "Chart:  " + diffTexts.at(i).at("design"), Point(h - offset_x - X_OFFSETINIT - 13 + font_offset_x, v + 70) + cv::Point(2, 1), 24, Scalar(0, 0, 0), -1, cv::LINE_AA, true);
-                freetype2->putText(result, "Chart:  " + diffTexts.at(i).at("design"), Point(h - offset_x - X_OFFSETINIT - 13 + font_offset_x, v + 70), 24, Scalar(200, 200, 200), -1, cv::LINE_AA, true);
+                std::string chart{ "Chart:  "s + diffTexts.at(i).at("design") };
+                freetype2->putText(result, chart, Point(h - offset_x - X_OFFSETINIT - 13 + font_offset_x, v + 70) + cv::Point(2, 1), 24, Scalar(0, 0, 0), -1, cv::LINE_AA, true);
+                freetype2->putText(result, chart, Point(h - offset_x - X_OFFSETINIT - 13 + font_offset_x, v + 70), 24, Scalar(200, 200, 200), -1, cv::LINE_AA, true);
                 h += hc; v += vc;
             }
         };
