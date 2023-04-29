@@ -43,7 +43,7 @@ public:
             throw std::logic_error("code is NULL");
         }
 
-        Mat img = Mat(code->width, code->width, CV_8U);
+        cv::Mat img = Mat(code->width, code->width, CV_8U);
 
         for (int i = 0; i < code->width; ++i) {
             for (int j = 0; j < code->width; ++j)
@@ -53,18 +53,18 @@ public:
         }
         resize(img, img, Size(img.rows * mul_size_x, img.cols * mul_size_y), 0, 0, INTER_NEAREST);
 
-        Mat result = Mat::zeros(img.rows + bound_size_x, img.cols + bound_size_y, CV_8U);
+        cv::Mat result{ Mat::zeros(img.rows + bound_size_x, img.cols + bound_size_y, CV_8U) };
         //白底
         result = 255 - result;
         //建立roi
         Rect roi_rect = Rect((result.rows - img.rows) / 2, (result.cols - img.rows) / 2, img.cols, img.rows);
         //roi关联到目标图像，并把源图像复制到指定roi
         img.copyTo(result(roi_rect));
-
+        img.release();
         if (reserver)cv::bitwise_not(result, result);
         if (u8c1)cvtColor(result, result, CV_8UC1);
         QRcode_free(code);
-        return result;
+        return std::move(result);
     }
 
 
@@ -86,10 +86,11 @@ public:
                 }
             }
         }
-        return processed;
+        img.release();
+        return std::move(processed);
     }
 
-    inline static void drawParallelogram(cv::Mat& img, const cv::Rect& rect, float alpha = 0.0f, float beta = 0.0f, const bool flip = false) {
+    inline static void drawParallelogram(cv::Mat img, const cv::Rect& rect, float alpha = 0.0f, float beta = 0.0f, const bool flip = false) {
         //cv::Rect rect(230, 100, img.size().width, img.size().height);
         alpha = convert_angle_to_radians<float>(alpha);
         beta = convert_angle_to_radians<float>(beta);
@@ -150,6 +151,14 @@ public:
         cv::split(img, channels1);
         channels1[3] = mask.clone();
         cv::merge(channels1, 4, img);
+
+        mask.release();
+        polyMask.release();
+        channels1[0].release();
+        channels1[1].release();
+        channels1[2].release();
+        channels1[3].release();
+        img.release();
     }
 
     /// <summary>
@@ -164,7 +173,7 @@ public:
     /// <param name="right">选填</param>
     /// <param name="bottom">选填</param>
     static void transparentPaste(
-        cv::Mat img2, cv::Mat& img1, const int left = 0, const int top = 0,
+        cv::Mat img2, cv::Mat img1, const int left = 0, const int top = 0,
         const float resize_x = 1.0f, const float resize_y = 1.0f,
         const int right = 0, const int bottom = 0) {
         resize(img2, img2, cv::Size(), resize_x, resize_y);
@@ -177,8 +186,15 @@ public:
         img2 = img2(roi);
 
         cv::Mat mat(img1.rows, img1.cols, CV_8UC4);//#define CV_8UC4 CV_MAKETYPE(CV_8U,4)可以创建-----8位无符号的四通道---带透明色的RGB图像 
-        for (int i = 0; i < img2.rows; i++) {
-            for (int j = 0; j < img2.cols; j++) {
+        
+        // 先检验确保不会发生core dumped
+        if (img2.cols > img1.cols || img2.rows > img1.rows)
+            throw std::runtime_error("img2.cols > img1.cols || img2.rows > img1.rows");
+        
+        //  i 为 高
+        for (int i = top; i < img2.rows; i++) {
+            // j 为 宽
+            for (int j = left; j < img2.cols; j++) {
                 //Mat::at()取值或改变某点的像素值比较耗时，可以采用Mat的模板子类Mat_<T>
                 //Mat类中的at方法作用：用于获取图像矩阵某点的值或改变某点的值。
                 double temp = img2.at<cv::Vec4b>(i, j)[3] / 255.0;
@@ -191,23 +207,22 @@ public:
         roi = cv::Rect(left, top, ini_x, ini_y);
 
         // 裁剪新Mat对象
-        mat = mat(std::move(roi)).clone();
+        mat(roi).copyTo(mat);
         roi = cv::Rect(left, top, mat.cols, mat.rows);
         // 限制ROI区域在img1的边界内
         roi &= cv::Rect(0, 0, img1.cols, img1.rows);
 
-        // 将img2复制到img1的指定坐标处
-        cv::Mat roi_img1 = img1(roi);
-        cv::Mat roi_img2 = mat(cv::Rect(cv::Point(0, 0), roi.size()));
-        roi_img2.copyTo(roi_img1);
+        mat(cv::Rect(cv::Point(0, 0), roi.size())).copyTo(img1(roi));
+        mat.release();
+        img2.release();
+        img1.release();
     }
 
     // img2复制到img1的指定坐标
     inline static void pasteMat(
-        cv::Mat img2, cv::Mat& img1, const int x = 0, const int y = 0,
+        cv::Mat img2, cv::Mat img1, const int x = 0, const int y = 0,
         const float resize_fx = 1.0f, const float resize_fy = 1.0f
     ) {
-        // 缩放img2为原大小的50%
         cv::resize(img2, img2, cv::Size(), resize_fx, resize_fy);
 
         // 计算ROI区域
@@ -220,6 +235,10 @@ public:
         cv::Mat roi_img1 = img1(roi);
         cv::Mat roi_img2 = img2(cv::Rect(cv::Point(0, 0), roi.size()));
         roi_img2.copyTo(roi_img1);
+        roi_img2.release();
+        roi_img1.release();
+        img1.release();
+        img2.release();
     };
 private:
     // 角度转弧度

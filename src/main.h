@@ -66,7 +66,7 @@ inline void start(void){
     CrowApp app; 
 
     // 日志等级
-    crow::logger::setLogLevel(crow::LogLevel::DEBUG);
+    crow::logger::setLogLevel(crow::LogLevel::Critical);
 
 #if CORS_OPEN
     // 跨域访问

@@ -23,6 +23,12 @@ using namespace std::chrono_literals;
 
 class OtherUtil final {
 public:
+    inline static std::string retainDecimalPlaces(double f, int n = 2) {
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(n) << f;
+    return ss.str();
+};
+
     /// <summary>
     /// 判断vector<string>是否存在特定值
     /// </summary>

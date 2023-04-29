@@ -36,8 +36,10 @@ public:
 		: m_app{ app }, m_phigros_service{ std::move(phigros_service) } {};
 
 	const inline void controller(void) {
-        CROW_ROUTE(m_app, "/test").methods("GET"_method)([&](const crow::request& req) {
+        CROW_ROUTE(m_app, "/phi/drawInfo").methods("GET"_method)([&](const crow::request& req) {
             crow::response response;
+            response.add_header("Cache-Control", "no-cache");
+            response.add_header("Pragma", "no-cache");
             try {
                 constexpr const char* PARAMS[] { "songId","QRCodeContent" };
                 int song_id{};
@@ -61,12 +63,13 @@ public:
                     std::move(song_id),std::move(is_qr_code),std::move(content))};
 
                 std::vector<uchar> data;
-                cv::imencode(".png", std::move(result), data);
+                cv::imencode(".png", result, data);
+                result.release();
                 std::string imgStr(data.begin(), data.end());
 
                 response.set_header("Content-Type", "image/png");
-                response.body = imgStr;
-            return response;
+                response.write(imgStr);
+                return response;
             } catch (const self::TimeoutException& e) {
                 response.write(StatusCodeHandle::getSimpleJsonResult(408, "Data API request timeout").dump(amount_spaces));
             } catch (const std::runtime_error& e) {
@@ -75,6 +78,7 @@ public:
                 response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what()).dump(amount_spaces));
             }
             response.set_header("Content-Type", "application/json");
+
             response.code = 500;
             return response;
         });
