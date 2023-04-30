@@ -31,6 +31,27 @@ using namespace cv;
 
 class DrawTool final{
 public:
+    inline static cv::Mat drawRotate(cv::Mat img, double angle, int flip = 2) {
+        // 计算旋转矩阵
+        cv::Point2f center(img.cols / 2.0, img.rows / 2.0);
+        cv::Mat rot{ cv::getRotationMatrix2D(center, angle, 1.0) };
+
+        // 确定旋转后的图像大小
+        cv::Rect bbox{ cv::RotatedRect(center, img.size(), angle).boundingRect() };
+        rot.at<double>(0, 2) += bbox.width / 2.0 - center.x;
+        rot.at<double>(1, 2) += bbox.height / 2.0 - center.y;
+
+        cv::Mat rotated{ cv::Mat::zeros(bbox.size(), CV_8UC4) };
+        cv::warpAffine(img, rotated, rot, bbox.size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0, 0));
+
+        if (flip >= -1 && flip <= 1)
+            cv::flip(rotated, rotated, flip);
+
+        rot.release();
+        img.release();
+        return std::move(rotated);
+    }
+
     inline static cv::Mat DrawQRcode(const std::string& url,
         bool reserver = false, 
         int mul_size_x = 10, int mul_size_y = 10,
@@ -178,7 +199,7 @@ public:
         const int right = 0, const int bottom = 0) {
         resize(img2, img2, cv::Size(), resize_x, resize_y);
         int ini_x{ img2.size().width }, ini_y{ img2.size().height };
-        copyMakeBorder(img2, img2, top, bottom, left, right, BORDER_CONSTANT, Scalar(0, 0, 0, 0));
+        copyMakeBorder(img2, img2, top, bottom, left, right, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0, 0));
         cv::Rect roi(0, 0, img2.cols, img2.rows);
         // 限制ROI区域在img1的边界内
         roi &= cv::Rect(0, 0, img2.cols, img2.rows);
