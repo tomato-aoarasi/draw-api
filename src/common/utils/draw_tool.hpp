@@ -29,8 +29,19 @@
 #include <qrencode.h>
 using namespace cv;
 
+// O3优化
+#pragma GCC optimize(3)
+#pragma G++ optimize(3)
+
 class DrawTool final{
 public:
+    /// <summary>
+    /// 绘制旋转后的图片
+    /// </summary>
+    /// <param name="img">需要旋转的图片</param>
+    /// <param name="angle"></param>
+    /// <param name="flip">-1为180°旋转,0为上下翻转,1为水平翻转</param>
+    /// <returns>旋转完毕后的图片</returns>
     inline static cv::Mat drawRotate(cv::Mat img, double angle, int flip = 2) {
         // 计算旋转矩阵
         cv::Point2f center(img.cols / 2.0, img.rows / 2.0);
@@ -57,7 +68,6 @@ public:
         int mul_size_x = 10, int mul_size_y = 10,
         int bound_size_x = 30, int bound_size_y = 30, bool u8c1 = true
     ) {
-
         using namespace cv;
         QRcode* code = QRcode_encodeString(url.c_str(), 0, QR_ECLEVEL_H, QR_MODE_8, 1);
         if (code == nullptr) {
@@ -89,6 +99,21 @@ public:
     }
 
 
+    // 创建一个全单色的特定尺寸的Mat，作为处理后的图片
+    inline static cv::Mat createPureMat(int x, int y, const int alpha = 255, const int B = 0, const int G = 0, const int R = 0) {
+        Mat processed = Mat::zeros(x, y, CV_8UC4);
+        //y 
+        for (int r = 0; r < y; r++) {
+            // x
+            for (int c = 0; c < x; c++) {
+                processed.at<Vec4b>(r, c)[0] = B; // B通道
+                processed.at<Vec4b>(r, c)[1] = G; // G通道
+                processed.at<Vec4b>(r, c)[2] = R; // R通道
+                processed.at<Vec4b>(r, c)[3] = alpha; // alpha通道
+            }
+        }
+        return std::move(processed);
+    }
 
     // 创建一个全单色的相同尺寸的Mat，作为处理后的图片
     inline static cv::Mat createPureMat(cv::Mat img, const int alpha = 255, const int B = 0, const int G = 0, const int R = 0) {
@@ -111,6 +136,7 @@ public:
         return std::move(processed);
     }
 
+    // https://www.desmos.com/calculator/kqtxu2xc0j
     inline static void drawParallelogram(cv::Mat img, const cv::Rect& rect, float alpha = 0.0f, float beta = 0.0f, const bool flip = false) {
         //cv::Rect rect(230, 100, img.size().width, img.size().height);
         alpha = convert_angle_to_radians<float>(alpha);
@@ -193,7 +219,7 @@ public:
     /// <param name="resize_y">缩放比例y</param>
     /// <param name="right">选填</param>
     /// <param name="bottom">选填</param>
-    static void transparentPaste(
+    inline static void transparentPaste(
         cv::Mat img2, cv::Mat img1, const int left = 0, const int top = 0,
         const float resize_x = 1.0f, const float resize_y = 1.0f,
         const int right = 0, const int bottom = 0) {

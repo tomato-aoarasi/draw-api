@@ -41,10 +41,9 @@ public:
             response.add_header("Cache-Control", "no-cache");
             response.add_header("Pragma", "no-cache");
             try {
-                constexpr const char* PARAMS[] { "songId","QRCodeContent" };
+                constexpr const char* PARAMS[] { "songId","QRcode" };
                 int song_id{};
                 bool is_qr_code{ false };
-                std::string_view content{};
 
                 if (OtherUtil::verifyParam(req, PARAMS[0])) {
                     song_id = std::stoi(req.url_params.get(PARAMS[0]));
@@ -54,10 +53,11 @@ public:
                     response.write(StatusCodeHandle::getSimpleJsonResult(400, "parameter 'songId' required and parameter cannot be empty.").dump(amount_spaces));
                     return response;
                 }
-                if (OtherUtil::verifyParam(req, PARAMS[1])) {
-                    content = req.url_params.get(PARAMS[1]);
+
+                std::string content{ req.get_header_value(PARAMS[1]) };
+
+                if (content.size() != 0)
                     is_qr_code = true;
-                }
 
                 cv::Mat result{ m_phigros_service->drawSongInfomation(
                     std::move(song_id),std::move(is_qr_code),std::move(content))};
@@ -83,6 +83,42 @@ public:
             return response;
         });
 
+
+        CROW_ROUTE(m_app, "/phi/drawSingle").methods("GET"_method)([&](const crow::request& req) {
+            crow::response response;
+            response.add_header("Cache-Control", "no-cache");
+            response.add_header("Pragma", "no-cache");
+            try { 
+
+                //cv::Mat result{ m_phigros_service->drawSongInfomation(
+                //    std::move(song_id),std::move(is_qr_code),std::move(content)) };
+
+                cv::Mat result{ m_phigros_service->drawPlayerSingleInfo(0,"","")};
+
+                std::vector<uchar> data;
+                cv::imencode(".png", result, data);
+                result.release();
+                std::string imgStr(data.begin(), data.end());
+
+                response.set_header("Content-Type", "image/png");
+                response.write(imgStr);
+                return response;
+            }
+            catch (const self::TimeoutException& e) {
+                response.write(StatusCodeHandle::getSimpleJsonResult(408, "Data API request timeout").dump(amount_spaces));
+            }
+            catch (const std::runtime_error& e) {
+                response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what()).dump(amount_spaces));
+            }
+            catch (const std::exception& e) {
+                response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what()).dump(amount_spaces));
+            }
+            
+            response.set_header("Content-Type", "application/json");
+            response.code = 500;
+            return response;
+            }
+        );
 	};
 private:
 	CrowApp& m_app;

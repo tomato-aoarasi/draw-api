@@ -18,6 +18,8 @@ class PhigrosService {
 public:
 	virtual ~PhigrosService() = default;
 	virtual cv::Mat drawSongInfomation(int,bool,std::string_view) = 0;
+	// 曲目id,YuhaoToken,SessionToken
+	virtual cv::Mat drawPlayerSingleInfo(int,std::string_view, std::string_view) = 0;
 private:
 };
 
