@@ -50,6 +50,7 @@ private:
         phigros{ cv::imread("draw/phi/Phigros.png", cv::IMREAD_UNCHANGED) },
         shadow{ cv::imread("draw/phi/Shadow.png", cv::IMREAD_UNCHANGED) },
         shadow_corner{ cv::imread("draw/phi/ShadowCorner.png", cv::IMREAD_UNCHANGED) },
+        playerRKSBox { cv::imread("draw/phi/rksBox.png", cv::IMREAD_UNCHANGED) },
         personal_single_song_info_shadow{ cv::imread("draw/phi/PersonalSingleSongInfoShadow.png",cv::IMREAD_UNCHANGED) };
 public:
     ~PhigrosServiceImpl() {
@@ -57,6 +58,7 @@ public:
         shadow.release();
         shadow_corner.release();
         personal_single_song_info_shadow.release();
+        playerRKSBox.release();
     };
 
     PhigrosServiceImpl() {
@@ -374,12 +376,13 @@ public:
 
     };
 
+    // string_view yuhao_token临时测试玩家名称
     inline cv::Mat drawPlayerSingleInfo(int song_id, std::string_view yuhao_token, std::string_view player_session_token) {
         constexpr const size_t size_w{ 2048 }, size_h{ 1080 };
         cv::Mat illustration{ cv::imread(Global::PhiResourcePath + "cover/Single/Random.png",cv::IMREAD_UNCHANGED) };
         cv::resize(illustration, illustration, cv::Size(size_w, size_h));
 
-        cv::Mat img = illustration.clone();
+        cv::Mat img{ illustration.clone() };
 
         // 切左右两边图片
         {
@@ -463,15 +466,111 @@ public:
         };
 
         DrawTool::transparentPaste(personal_single_song_info_shadow, img);
-
-
         cv::Mat rate{ cv::imread("draw/phi/rating/uniformSize/phi_old.png",cv::IMREAD_UNCHANGED) };
-
         rate = rate(cv::Rect(25, 0, rate.cols - 25, rate.rows));
         cv::resize(rate, rate, cv::Size(), 1.25, 1.25);
 
-        DrawTool::transparentPaste(rate, img, 0, 720);
+        int player_form_offset_x{};
 
+
+        cv::Ptr<freetype::FreeType2> freetype2{ cv::freetype::createFreeType2() };
+        freetype2->loadFontData("draw/phi/font/SourceHanSansCN_SairaCondensed_Hybrid_Medium.ttf", 0);
+
+        std::string playerName{ yuhao_token };
+        DrawTool::transparentPaste(rate, img, 0, 720);
+        // 玩家框
+        {
+            constexpr const int 
+                h{ 88 },
+                offset_h{ 25 };// 88 * tan15.9 = 25
+
+            // + 292
+            int baseLine;
+            int offset_w{ 292 + freetype2->getTextSize(playerName, 48, -1, &baseLine).width };
+
+            while (offset_w > 1400) {
+                playerName.pop_back();
+                std::string temp{ playerName + "..."s};
+                offset_w = 292 + freetype2->getTextSize(temp, 48, -1, &baseLine).width;
+                if (offset_w > 1400)
+                {
+                    continue;
+                }
+                else {
+                    playerName = temp;
+                    break;
+                }
+            }
+
+            cv::Mat playerForm(h, offset_w, CV_8UC4, cv::Scalar(0, 0, 0, 0));
+
+            // 定义平行四边形的四个顶点坐标
+            std::vector<cv::Point> points{
+                cv::Point(0, playerForm.size().height),
+                cv::Point(offset_h, 0),
+                cv::Point(playerForm.size().width, 0),
+                cv::Point(playerForm.size().width, playerForm.size().height)
+            };
+
+            // 将顶点坐标存储到一个向量中
+            std::vector<std::vector<cv::Point>> contours;
+            contours.push_back(points);
+            cv::drawContours(playerForm, contours, 0, cv::Scalar(0, 0, 0, 178), -1, LINE_AA);
+
+            player_form_offset_x = size_w - playerForm.cols;
+            DrawTool::transparentPaste(playerForm, img, player_form_offset_x, 48);
+            playerForm.release();
+        };
+        DrawTool::transparentPaste(playerRKSBox, img, 1907, 96);
+
+        // 玩家头像
+        {
+            constexpr const int
+                h{ 120 },
+                offset_h{ 34 };// 120 * tan15.9 = 34//向下取整
+
+            cv::Mat playerHead{ cv::imread("draw/test.png", cv::IMREAD_UNCHANGED) },
+                playerHeadBox(h, 166, CV_8UC4, cv::Scalar(0, 0, 0, 0));
+
+            resize(playerHead, playerHead, cv::Size(150, 150));
+
+            // 定义平行四边形的四个顶点坐标
+            std::vector<cv::Point> points{
+                cv::Point(0, playerHeadBox.size().height),
+                cv::Point(offset_h, 0),
+                cv::Point(playerHeadBox.size().width - 2, 0),
+                cv::Point(playerHeadBox.size().width - offset_h - 2, playerHeadBox.size().height)
+            },
+                points1{
+                cv::Point(30, 21),
+                cv::Point(150 - 2, 21),
+                cv::Point(120 - 2, 129),
+                cv::Point(0, 129),
+                cv::Point(0,150),
+                cv::Point(150,150),
+                cv::Point(150,0),
+                cv::Point(0,0),
+                cv::Point(0,129)
+            };
+
+            // 将顶点坐标存储到一个向量中
+            std::vector<std::vector<cv::Point>> contours{ points };
+            std::vector<std::vector<cv::Point>> contours1{ points1 };
+            //reverse(contours1[0], contours1[0]);
+            //contours.emplace_back(points);
+            //contours1.emplace_back(points1);
+            cv::drawContours(playerHeadBox, contours, 0, cv::Scalar(77, 77, 77, 255), -1, LINE_AA);
+
+            cv::drawContours(playerHead, contours1, 0, cv::Scalar(0, 0, 0, 0), -1, LINE_AA);
+
+            DrawTool::transparentPaste(playerHeadBox, img, 1794, 33);
+            DrawTool::transparentPaste(playerHead, img, 1802, 17);
+            playerHeadBox.release();
+            playerHead.release();
+        };
+        cv::Mat courseRating{ cv::imread("draw/phi/rating/uniformSize/4.png",cv::IMREAD_UNCHANGED) };
+        DrawTool::transparentPaste(courseRating, img, 1942, 49, 0.269f, 0.269f, cv::INTER_AREA);
+        courseRating.release();
         rate.release();
         illustration.release();
 
@@ -485,21 +584,35 @@ public:
         img.release();
 
 
-        cv::Ptr<freetype::FreeType2> freetype2;
 
-        freetype2 = cv::freetype::createFreeType2();
+
+        freetype2->loadFontData("draw/phi/font/PlayoffProCond.ttf", 0);
+        freetype2->putText(result, "AT: 16.3", cv::Point(117, 357), 56, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+
+        freetype2->putText(result, "9938920", cv::Point(246, 970), 84, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+        freetype2->putText(result, "Rating: 16.99", cv::Point(587, 937), 40, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+        freetype2->putText(result, "Acc: 99.32%", cv::Point(582, 975), 32, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+        freetype2->putText(result, "45", cv::Point(1975, 78), 36, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+
+        // 加粗字体
+        freetype2->loadFontData("draw/phi/font/SourceHanSans_SairaHybridRegularHot.ttf", 0);
+        freetype2->putText(result, "13.12", cv::Point(1948, 122), 32, cv::Scalar(0, 0, 0), -1, cv::LINE_AA, true);
 
 
         // 中等字体
         freetype2->loadFontData("draw/phi/font/SourceHanSansCN_SairaCondensed_Hybrid_Medium.ttf", 0);
+        freetype2->putText(result, "Stasis", cv::Point(119, 271), 84, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+        
+        // "Tomatohust"
+        freetype2->putText(result, playerName, cv::Point(player_form_offset_x + 38, 108), 48, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
 
-        freetype2->putText(result, "9938920", cv::Point(260, 965), 84, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+        freetype2->loadFontData("draw/phi/font/AdobeStdR.otf", 0);
 
+        freetype2->putText(result, "Player data from yuhao7370. Generated by tomato Team - Phigros.", cv::Point(1, 1059), 16, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
         freetype2.release();
 
         return std::move(result);
     }
 };
-
 
 #endif // !PHIGROS_SERVICE_HPP

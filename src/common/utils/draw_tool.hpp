@@ -29,6 +29,8 @@
 #include <qrencode.h>
 using namespace cv;
 
+#include FT_FREETYPE_H
+
 // O3优化
 #pragma GCC optimize(3)
 #pragma G++ optimize(3)
@@ -217,13 +219,14 @@ public:
     /// <param name="top">向↓位移多少像素</param>
     /// <param name="resize_x">缩放比例x</param>
     /// <param name="resize_y">缩放比例y</param>
+    /// <param name="interpolation">缩放锯齿</param>
     /// <param name="right">选填</param>
     /// <param name="bottom">选填</param>
     inline static void transparentPaste(
         cv::Mat img2, cv::Mat img1, const int left = 0, const int top = 0,
-        const float resize_x = 1.0f, const float resize_y = 1.0f,
+        const float resize_x = 1.0f, const float resize_y = 1.0f, InterpolationFlags interpolation  = InterpolationFlags::INTER_LINEAR,
         const int right = 0, const int bottom = 0) {
-        resize(img2, img2, cv::Size(), resize_x, resize_y);
+        resize(img2, img2, cv::Size(), resize_x, resize_y, interpolation);
         int ini_x{ img2.size().width }, ini_y{ img2.size().height };
         copyMakeBorder(img2, img2, top, bottom, left, right, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0, 0));
         cv::Rect roi(0, 0, img2.cols, img2.rows);

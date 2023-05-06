@@ -89,11 +89,12 @@ public:
             response.add_header("Cache-Control", "no-cache");
             response.add_header("Pragma", "no-cache");
             try { 
-
+                // 测试玩家名
+                std::string playerNameTest{ req.url_params.get("player")};
                 //cv::Mat result{ m_phigros_service->drawSongInfomation(
                 //    std::move(song_id),std::move(is_qr_code),std::move(content)) };
 
-                cv::Mat result{ m_phigros_service->drawPlayerSingleInfo(0,"","")};
+                cv::Mat result{ m_phigros_service->drawPlayerSingleInfo(0,playerNameTest,"")};
 
                 std::vector<uchar> data;
                 cv::imencode(".png", result, data);
