@@ -39,6 +39,7 @@ using CrowApplication = crow::SimpleApp;
 
 #define CrowApp CrowApplication
 #define Json nlohmann::json
+#define Ubyte ubyte
 
 class Global final {
 	friend class Config;

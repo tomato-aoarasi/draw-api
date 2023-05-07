@@ -23,11 +23,17 @@ using namespace std::chrono_literals;
 
 class OtherUtil final {
 public:
+    /// <summary>
+    /// 保留浮点数后N位
+    /// </summary>
+    /// <param name="f">数字</param>
+    /// <param name="n">保留多少位</param>
+    /// <returns></returns>
     inline static std::string retainDecimalPlaces(double f, int n = 2) {
-    std::stringstream ss;
-    ss << std::fixed << std::setprecision(n) << f;
-    return ss.str();
-};
+        std::stringstream ss;
+        ss << std::fixed << std::setprecision(n) << f;
+        return ss.str();
+    };
 
     /// <summary>
     /// 判断vector<string>是否存在特定值
@@ -76,6 +82,58 @@ public:
 
         if (status == std::future_status::timeout)throw self::TimeoutException();
         data = future.get();
+    }
+
+    /// <summary>
+    /// 对数字进行补位
+    /// </summary>
+    /// <param name="num"></param>
+    /// <param name="symbol"></param>
+    /// <returns></returns>
+    inline static std::string digitSupplementHandle(auto num, char&& symbol ='0', int length = 7) {
+        std::stringstream ss;
+        ss << std::setw(length) << std::setfill(symbol) << num;
+        return ss.str();
+    };
+
+    // base64解码的工具
+    inline static std::vector<uchar> base64Decode(const std::string& base64Str) {
+        static const std::string base64Chars =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            "abcdefghijklmnopqrstuvwxyz"
+            "0123456789+/";
+
+        std::vector<uchar> data;
+        size_t i = 0;
+        uint32_t n = 0;
+        int padding = 0;
+
+        while (i < base64Str.length()) {
+            char c = base64Str[i++];
+            if (c == '=') {
+                padding++;
+                continue;
+            }
+            size_t index = base64Chars.find(c);
+            if (index == std::string::npos) {
+                continue;
+            }
+            n = (n << 6) | index;
+            if (i % 4 == 0) {
+                data.push_back((n >> 16) & 0xFF);
+                data.push_back((n >> 8) & 0xFF);
+                data.push_back(n & 0xFF);
+                n = 0;
+            }
+        }
+        if (padding > 0) {
+            n <<= padding * 6;
+            data.push_back((n >> 16) & 0xFF);
+            if (padding == 1) {
+                data.push_back((n >> 8) & 0xFF);
+            }
+        }
+        return data;
     }
 private:
 };

@@ -84,17 +84,46 @@ public:
         });
 
 
-        CROW_ROUTE(m_app, "/phi/drawSingle").methods("GET"_method)([&](const crow::request& req) {
+        CROW_ROUTE(m_app, "/phi/drawSingle").methods("POST"_method)([&](const crow::request& req) {
+
+            std::string song_id{}, avatar_base64{};
+            Ubyte level{ 2 };
             crow::response response;
             response.add_header("Cache-Control", "no-cache");
             response.add_header("Pragma", "no-cache");
             try { 
                 // 测试玩家名
-                std::string playerNameTest{ req.url_params.get("player")};
+                //std::string playerNameTest{ req.url_params.get("player")};
                 //cv::Mat result{ m_phigros_service->drawSongInfomation(
                 //    std::move(song_id),std::move(is_qr_code),std::move(content)) };
 
-                cv::Mat result{ m_phigros_service->drawPlayerSingleInfo(0,playerNameTest,"")};
+                Json jsonData{ json::parse(req.body)};
+
+                std::exchange(jsonData, jsonData[0]);
+
+                //std::cout << jsonData.contains("songId"s) << std::endl;
+                //std::cout << jsonData.contains("level"s) << std::endl;
+                if (jsonData.contains("songId")) {
+                    song_id = jsonData["songId"].get<std::string>();
+                }
+                else {
+                    response.set_header("Content-Type", "application/json");
+                    response.code = 400;
+                    response.write(StatusCodeHandle::getSimpleJsonResult(400, "parameter 'songId' required and parameter cannot be empty.").dump(amount_spaces));
+                    return response;
+                }
+                if (jsonData.contains("level")) {
+                    level = jsonData["level"].get<Ubyte>();
+                }
+                if (jsonData.contains("avatar_base64")) {
+                    avatar_base64 = jsonData["avatar_base64"].get<std::string>();
+                }
+
+                std::string 
+                    authorization{ req.get_header_value("Authorization") },
+                    sessionToken { req.get_header_value("SessionToken") };
+
+                cv::Mat result{ m_phigros_service->drawPlayerSingleInfo(song_id, level,authorization,sessionToken,avatar_base64) };
 
                 std::vector<uchar> data;
                 cv::imencode(".png", result, data);
@@ -105,18 +134,29 @@ public:
                 response.write(imgStr);
                 return response;
             }
-            catch (const self::TimeoutException& e) {
+            catch (const self::HTTPException& e) {
+                if (e.getMessage().empty())
+                {
+                    response.write(StatusCodeHandle::getSimpleJsonResult(e.getCode()).dump(amount_spaces));
+                }
+                else {
+                    response.write(StatusCodeHandle::getSimpleJsonResult(e.getCode(), e.getMessage()).dump(amount_spaces));
+                }
+                response.code = e.getCode();
+            }catch (const self::TimeoutException& e) {
                 response.write(StatusCodeHandle::getSimpleJsonResult(408, "Data API request timeout").dump(amount_spaces));
+                response.code = 408;
             }
             catch (const std::runtime_error& e) {
                 response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what()).dump(amount_spaces));
+                response.code = 500;
             }
             catch (const std::exception& e) {
                 response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what()).dump(amount_spaces));
+                response.code = 500;
             }
             
             response.set_header("Content-Type", "application/json");
-            response.code = 500;
             return response;
             }
         );

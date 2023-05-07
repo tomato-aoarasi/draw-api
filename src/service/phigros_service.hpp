@@ -13,13 +13,14 @@
 
 #include <string_view>
 #include <opencv2/opencv.hpp>
+#include "configuration/config.hpp"
 
 class PhigrosService {
 public:
 	virtual ~PhigrosService() = default;
 	virtual cv::Mat drawSongInfomation(int,bool,std::string_view) = 0;
 	// 曲目id,YuhaoToken,SessionToken
-	virtual cv::Mat drawPlayerSingleInfo(int,std::string_view, std::string_view) = 0;
+	virtual cv::Mat drawPlayerSingleInfo(std::string_view, Ubyte, std::string_view, std::string_view, std::string_view) = 0;
 private:
 };
 

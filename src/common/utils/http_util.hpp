@@ -98,7 +98,7 @@ public:
             result["code"] = state;
 
             if (!msg.empty()) {
-                result["comment"] = msg;
+                result["detail"] = msg;
             }
 
             switch (state)
