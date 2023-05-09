@@ -427,6 +427,8 @@ public:
         self::HTTPException httpexception;
 
         std::thread apiDataGet([&] {
+            try{
+
                 constexpr std::chrono::seconds playerTimeout{ 30s };
                 //获取API数据到对应id
                 OtherUtil::asyncGetAPI(dataId, timeout, Global::BingAPI, "/api/pgr/findYuhao7370Id?id="s + song_id.data());
@@ -441,7 +443,7 @@ public:
 
                 // POST请求测试
                 // 创建HTTP客户端
-                httplib::Client client("mc.yuhao7370.top", 5555);
+                httplib::Client client(Global::YuhaoAPI, 5555);
 
                 // 创建Authorization头部
                 std::string auth_header = "Bearer "s + yuhao_token.data();
@@ -454,8 +456,15 @@ public:
                 std::future<Json> future{ std::async(std::launch::async,[&]()->Json {
                     httplib::Result res = client.Post("/user/best?SessionToken="s + player_session_token.data() + "&overflow=0&level="s + levelStr + "&songid="s + yuhao7370id, headers);
                     // 到时候加一个超时
-                    
                     if (res && res->status == 200) return json::parse(res->body);
+
+                    auto err{ res.error() };
+                    if (err != httplib::Error::Success )
+                    {
+                        httpexception = self::HTTPException(httplib::to_string(err), 500);
+                        flag = true;
+                        return Json();
+                    }
 
                     try{
                         httpexception = self::HTTPException(json::parse(res->body)["detail"].get<std::string>(),res->status);
@@ -467,7 +476,9 @@ public:
                         flag = true;
                         return Json();
                     }
-                }) };
+                }
+                
+                ) };
                 // --------------------
                 std::future_status status{ future.wait_for(playerTimeout) };
 
@@ -477,7 +488,10 @@ public:
                     return;
                 }
                 playerData = future.get();
-
+            }
+            catch (const std::runtime_error& e) {
+                httpexception = self::HTTPException(e.what());
+            }
                 // =================================================
             });;
 
