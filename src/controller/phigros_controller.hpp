@@ -20,6 +20,7 @@
 #include "crow.h"
 #include "service/phigros_service.hpp"
 #include "common/utils/other_util.hpp"
+#include "common/utils/log_system.hpp"
 #include <opencv2/opencv.hpp>
 #include <exception>
 #include <stdexcept>
@@ -59,6 +60,8 @@ public:
                 if (content.size() != 0)
                     is_qr_code = true;
 
+                LogSystem::logInfo(std::format("[Phigros]绘制曲目信息 ------ ID:{} / QRcode:{}", song_id, content));
+
                 cv::Mat result{ m_phigros_service->drawSongInfomation(
                     std::move(song_id),std::move(is_qr_code),std::move(content))};
 
@@ -71,10 +74,13 @@ public:
                 response.write(imgStr);
                 return response;
             } catch (const self::TimeoutException& e) {
+                LogSystem::logError("[Phigros]绘制曲目信息 ------ API请求超时");
                 response.write(StatusCodeHandle::getSimpleJsonResult(408, "Data API request timeout").dump(amount_spaces));
             } catch (const std::runtime_error& e) {
+                LogSystem::logError(std::format("[Phigros]绘制曲目信息 ------ msg: {} / code: {}", e.what(), 500));
                 response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what()).dump(amount_spaces));
             } catch (const std::exception& e) {
+                LogSystem::logError(std::format("[Phigros]绘制曲目信息 ------ msg: {} / code: {}", e.what(), 500));
                 response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what()).dump(amount_spaces));
             }
             response.set_header("Content-Type", "application/json");
@@ -123,6 +129,7 @@ public:
                     authorization{ req.get_header_value("Authorization") },
                     sessionToken { req.get_header_value("SessionToken") };
 
+                LogSystem::logInfo(std::format("[Phigros]绘制玩家BEST ------ SongID:{} / SessionToken:{}", song_id, sessionToken));
                 cv::Mat result{ m_phigros_service->drawPlayerSingleInfo(song_id, level,authorization,sessionToken,avatar_base64) };
 
                 std::vector<uchar> data;
@@ -142,16 +149,20 @@ public:
                 else {
                     response.write(StatusCodeHandle::getSimpleJsonResult(e.getCode(), e.getMessage()).dump(amount_spaces));
                 }
+                LogSystem::logError(std::format("[Phigros]绘制玩家BEST ------ msg: {} / code: {}", e.what(), e.getCode()));
                 response.code = e.getCode();
             }catch (const self::TimeoutException& e) {
+                LogSystem::logError("[Phigros]绘制玩家BEST ------ API请求超时");
                 response.write(StatusCodeHandle::getSimpleJsonResult(408, "Data API request timeout").dump(amount_spaces));
                 response.code = 408;
             }
             catch (const std::runtime_error& e) {
+                LogSystem::logError(std::format("[Phigros]绘制玩家BEST ------ msg: {} / code: {}", e.what(), 500));
                 response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what()).dump(amount_spaces));
                 response.code = 500;
             }
             catch (const std::exception& e) {
+                LogSystem::logError(std::format("[Phigros]绘制玩家BEST ------ msg: {} / code: {}", e.what(), 500));
                 response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what()).dump(amount_spaces));
                 response.code = 500;
             }

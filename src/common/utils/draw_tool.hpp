@@ -73,6 +73,7 @@ public:
         using namespace cv;
         QRcode* code = QRcode_encodeString(url.c_str(), 0, QR_ECLEVEL_H, QR_MODE_8, 1);
         if (code == nullptr) {
+            QRcode_free(code);
             throw std::logic_error("code is NULL");
         }
 
@@ -238,9 +239,12 @@ public:
         cv::Mat mat(img1.rows, img1.cols, CV_8UC4);//#define CV_8UC4 CV_MAKETYPE(CV_8U,4)可以创建-----8位无符号的四通道---带透明色的RGB图像 
         
         // 先检验确保不会发生core dumped
-        if (img2.cols > img1.cols || img2.rows > img1.rows)
+        if (img2.cols > img1.cols || img2.rows > img1.rows || left < 0 || top < 0){
+            mat.release();
+            img2.release();
+            img1.release();
             throw std::runtime_error("img2.cols > img1.cols || img2.rows > img1.rows");
-        
+        }
         //  i 为 高
         for (int i = top; i < img2.rows; i++) {
             // j 为 宽
