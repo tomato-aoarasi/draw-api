@@ -8,12 +8,12 @@
 
 #pragma once
 
-#ifndef SELF_EXCEPTION_HPP
-#define SELF_EXCEPTION_HPP  
 #include <exception>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#ifndef SELF_EXCEPTION_HPP
+#define SELF_EXCEPTION_HPP  
 
 namespace self {
     class FileException : public std::exception {

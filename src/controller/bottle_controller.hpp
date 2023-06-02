@@ -7,8 +7,7 @@
 */
 
 #pragma once
-#ifndef BOTTLE_CONTROLLER
-#define BOTTLE_CONTROLLER
+
 #include <future>
 #include <memory>
 #include <string_view>
@@ -20,6 +19,9 @@
 #include "bcrypt.h"
 #include <service/impl/bottle_service_impl.hpp>
 #include <configuration/config.hpp>
+
+#ifndef BOTTLE_CONTROLLER
+#define BOTTLE_CONTROLLER
 
 using json = nlohmann::json;
 using namespace std::chrono;

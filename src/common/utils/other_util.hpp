@@ -8,9 +8,6 @@
 
 #pragma once
 
-#ifndef OTHER_UTIL
-#define OTHER_UTIL  
-
 #include <string>
 #include <string_view>
 #include <vector>
@@ -18,6 +15,9 @@
 #include <future>
 #include "configuration/config.hpp"
 #include "crow.h"
+
+#ifndef OTHER_UTIL
+#define OTHER_UTIL  
 
 using namespace std::chrono_literals;
 

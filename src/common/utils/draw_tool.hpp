@@ -8,10 +8,6 @@
 
 
 #pragma once
-
-#ifndef DRAW_TOOL
-#define DRAW_TOOL  
-
 //#define DEBUG  
 
 #include <stdexcept>
@@ -27,6 +23,10 @@
 #include <cmath>
 #include <numbers>
 #include <qrencode.h>
+
+#ifndef DRAW_TOOL
+#define DRAW_TOOL  
+
 using namespace cv;
 
 #include FT_FREETYPE_H

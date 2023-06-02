@@ -8,9 +8,6 @@
 
 #pragma once
 
-#ifndef PHIGROS_SERVICE_IMPL_HPP
-#define PHIGROS_SERVICE_IMPL_HPP  
-
 #include <string>
 #include <cmath>
 #include <vector>
@@ -40,6 +37,9 @@
 #define CPPHTTPLIB_OPENSSL_SUPPORT
 
 using namespace std::chrono_literals;
+
+#ifndef PHIGROS_SERVICE_IMPL_HPP
+#define PHIGROS_SERVICE_IMPL_HPP  
 
 // O3优化
 #pragma GCC optimize(3)
@@ -393,31 +393,9 @@ public:
 
     // string_view yuhao_token临时测试玩家名称
     inline cv::Mat drawPlayerSingleInfo(std::string_view song_id, Ubyte level, 
-        std::string_view yuhao_token, std::string_view player_session_token, std::string_view avatar_base64) {
+        std::string_view auth_token, std::string_view player_session_token, std::string_view avatar_base64) {
         constexpr std::chrono::milliseconds timeout{ 2000ms };
         Json dataId{}, songData{}, playerData{};
-        std::string levelStr{};
-        if (level == 0)
-        {
-            levelStr = "EZ";
-        }
-        else if(level == 1) {
-            levelStr = "HD";
-        }
-        else if(level == 2) {
-            levelStr = "IN";
-        }
-        else if(level == 3) {
-            levelStr = "AT";
-        }
-        else if(level == 4) {
-            levelStr = "Legacy";
-        }
-        else
-        {
-            // 400
-            throw std::runtime_error("param is not exist");
-        }
         //获取API数据到曲目data
         OtherUtil::asyncGetAPI(songData, timeout, Global::BingAPI, Global::PhiUri + "?id="s + song_id.data());
         std::exchange(songData, songData[0]);
@@ -431,6 +409,7 @@ public:
 
                 constexpr std::chrono::seconds playerTimeout{ 30s };
                 //获取API数据到对应id
+                /*
                 OtherUtil::asyncGetAPI(dataId, timeout, Global::BingAPI, "/api/pgr/findYuhao7370Id?id="s + song_id.data());
 
 
@@ -440,21 +419,24 @@ public:
                     return;
                 }
                 std::string yuhao7370id{ dataId["yuhao7370_song_id"].get<std::string>() };
-
+                */
                 // POST请求测试
                 // 创建HTTP客户端
-                httplib::Client client(Global::YuhaoAPI, 5555);
+                httplib::Client client(Global::PhiPlayDataAPI, 8299);
 
                 // 创建Authorization头部
-                std::string auth_header = "Bearer "s + yuhao_token.data();
+                std::string auth_header = "Bearer "s + auth_token.data();
 
                 // 创建POST请求
-                httplib::Headers headers = { {"Authorization", auth_header} };
+                httplib::Headers headers = { 
+                    {"Authorization", auth_header},
+                    {"SessionToken", player_session_token.data()},
+                };
 
                 // =================================================
             
                 std::future<Json> future{ std::async(std::launch::async,[&]()->Json {
-                    httplib::Result res = client.Post("/user/best?SessionToken="s + player_session_token.data() + "&overflow=0&level="s + levelStr + "&songid="s + yuhao7370id, headers);
+                    httplib::Result res { client.Get("/proxy/phi/best?songid="s + song_id.data() + "level="s + std::to_string(level), headers)};
                     // 到时候加一个超时
                     if (res && res->status == 200) return json::parse(res->body);
 
@@ -601,17 +583,13 @@ public:
             rate.release();
             throw httpexception;
         }
-        if (!playerData["status"].get<bool>())
-        {
-            throw self::HTTPException(playerData["content"].get<std::string>(), 400);
-        }
         std::exchange(playerData, playerData["content"]);
 
         std::string
-            playerName{ playerData["PlayerID"].get<std::string>() }, 
-            playerRKS { OtherUtil::retainDecimalPlaces(playerData["RankingScore"].get<float>()) };
+            playerName{ playerData["playerNickname"].get<std::string>() }, 
+            playerRKS { OtherUtil::retainDecimalPlaces(playerData["rankingScore"].get<float>()) };
         int playerSocre{ playerData["record"]["score"].get<int>() },
-            playerCourseRanking{ playerData["ChallengeModeRank"].get<int>() };
+            playerCourseRanking{ playerData["challengeModeRank"].get<int>() };
         bool playerIsFC { playerData["record"]["isfc"].get<bool>()};
 
         if (playerSocre >= 1000000) {
@@ -773,8 +751,9 @@ public:
 
         freetype2->loadFontData("draw/phi/font/PlayoffProCond.ttf", 0);
 
-        std::string songRating{ playerData["record"]["level"].get<std::string>() + ": "s + OtherUtil::retainDecimalPlaces(playerData["record"]["rating"].get<float>(),1)};
+        std::string songRating{ playerData["record"]["difficulty"].get<std::string>() + ": "s + OtherUtil::retainDecimalPlaces(playerData["record"]["rating"].get<float>(),1)};
 
+        freetype2->putText(result, songRating, cv::Point(117, 357) + cv::Point(5, 3), 56, cv::Scalar(5, 5, 5), -1, cv::LINE_AA, true);
         freetype2->putText(result, songRating, cv::Point(117, 357), 56, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
 
         freetype2->putText(result, OtherUtil::digitSupplementHandle(playerSocre), cv::Point(238, 970), 84, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
@@ -803,7 +782,8 @@ public:
 
         // 中等字体
         freetype2->loadFontData("draw/phi/font/SourceHanSansCN_SairaCondensed_Hybrid_Medium.ttf", 0);
-        freetype2->putText(result, playerData["record"]["songname"], cv::Point(119, 272), 84, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+        freetype2->putText(result, playerData["record"]["title"], cv::Point(119, 272) + cv::Point(5, 3), 84, cv::Scalar(5, 5, 5), -1, cv::LINE_AA, true);
+        freetype2->putText(result, playerData["record"]["title"], cv::Point(119, 272), 84, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
         
         freetype2->putText(result, playerName, cv::Point(player_form_offset_x + 52, 107), 48, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
 

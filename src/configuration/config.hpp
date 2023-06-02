@@ -46,7 +46,7 @@ class Global final {
 public:
 	inline static const std::string BingAPI{ "http://150.158.89.12:6680"s };
 
-	inline static const std::string YuhaoAPI{ "mc.yuhao7370.top"s };
+	inline static const std::string PhiPlayDataAPI{ "150.158.89.12"s };
 	inline static const std::string PhiUri{ "/api/pgr/findBySong"s };
 	inline static const std::string PhiUrl{ BingAPI + PhiUri };
 	inline static std::string ResourcePath{};

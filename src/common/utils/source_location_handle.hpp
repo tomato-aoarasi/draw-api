@@ -8,12 +8,13 @@
 
 #pragma once
 
-#ifndef SOURCE_LOCATION_HANDLE_HPP
-#define SOURCE_LOCATION_HANDLE_HPP  
 #include <chrono>
 #include <sstream>
 #include "fmt/format.h"
 #include "source_location.hpp"
+
+#ifndef SOURCE_LOCATION_HANDLE_HPP
+#define SOURCE_LOCATION_HANDLE_HPP  
 
 namespace std {
 	using fmt::format;

@@ -7,8 +7,7 @@
 */
 
 #pragma once
-#ifndef SQL_HANDLE_HPP
-#define SQL_HANDLE_HPP  
+
 #include <unordered_map>
 #include <vector>
 #include <any>
@@ -16,6 +15,9 @@
 #include "prevent_inject.hpp"
 #include "sql_util.hpp"
 #include "sqlite_modern_cpp.h"
+
+#ifndef SQL_HANDLE_HPP
+#define SQL_HANDLE_HPP  
 
 using valueType = std::pair<std::string, std::string>;
 class SQL_Handle : public SQL_Util {

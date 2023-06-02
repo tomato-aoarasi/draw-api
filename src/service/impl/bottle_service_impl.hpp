@@ -8,8 +8,6 @@
 
 #pragma once
 
-#ifndef BOTTLE_SERVICE_IMPL_HPP 
-#define BOTTLE_SERVICE_IMPL_HPP  
 #include <chrono>
 #include <bcrypt.h>
 #include "dao/user.hpp"
@@ -18,6 +16,9 @@
 #include "jwt-cpp/jwt.h"
 #include "common/utils/http_util.hpp"
 #include "dao/bottle.hpp"
+
+#ifndef BOTTLE_SERVICE_IMPL_HPP 
+#define BOTTLE_SERVICE_IMPL_HPP  
 
 #define OLD  0  
 

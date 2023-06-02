@@ -7,11 +7,13 @@
 */
 
 #pragma once
-#ifndef USER_HPP
-#define USER_HPP  
+
 #include <string_view>
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
+
+#ifndef USER_HPP
+#define USER_HPP  
 
 using json = nlohmann::json;
 using _uint64 = unsigned long long int;

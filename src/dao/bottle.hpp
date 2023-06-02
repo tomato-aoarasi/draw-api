@@ -7,11 +7,13 @@
 */
 
 #pragma once
-#ifndef BOTTLE_HPP
-#define BOTTLE_HPP  
+
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include <filesystem>
+
+#ifndef BOTTLE_HPP
+#define BOTTLE_HPP  
 
 using json = nlohmann::json;
 using _uint64 = unsigned long long int;

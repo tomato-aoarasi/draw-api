@@ -75,17 +75,19 @@ public:
                 return response;
             } catch (const self::TimeoutException& e) {
                 LogSystem::logError("[Phigros]绘制曲目信息 ------ API请求超时");
+                response.code = 408;
                 response.write(StatusCodeHandle::getSimpleJsonResult(408, "Data API request timeout").dump(amount_spaces));
             } catch (const std::runtime_error& e) {
                 LogSystem::logError(std::format("[Phigros]绘制曲目信息 ------ msg: {} / code: {}", e.what(), 500));
+                response.code = 500;
                 response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what()).dump(amount_spaces));
             } catch (const std::exception& e) {
                 LogSystem::logError(std::format("[Phigros]绘制曲目信息 ------ msg: {} / code: {}", e.what(), 500));
+                response.code = 500;
                 response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what()).dump(amount_spaces));
             }
             response.set_header("Content-Type", "application/json");
 
-            response.code = 500;
             return response;
         });
 

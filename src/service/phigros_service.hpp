@@ -8,12 +8,12 @@
 
 #pragma once
 
-#ifndef PHIGROS_SERVICE_HPP
-#define PHIGROS_SERVICE_HPP  
-
 #include <string_view>
 #include <opencv2/opencv.hpp>
 #include "configuration/config.hpp"
+
+#ifndef PHIGROS_SERVICE_HPP
+#define PHIGROS_SERVICE_HPP  
 
 class PhigrosService {
 public:
