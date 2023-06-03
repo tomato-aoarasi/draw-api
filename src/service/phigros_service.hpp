@@ -21,6 +21,7 @@ public:
 	virtual cv::Mat drawSongInfomation(int,bool,std::string_view) = 0;
 	// 曲目id,YuhaoToken,SessionToken
 	virtual cv::Mat drawPlayerSingleInfo(std::string_view, Ubyte, std::string_view, std::string_view, std::string_view) = 0;
+	virtual cv::Mat drawPlayerSingleInfoModernStyle(std::string_view, Ubyte, std::string_view, std::string_view, std::string_view) = 0;
 private:
 };
 

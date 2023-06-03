@@ -18,8 +18,7 @@ int main(int argc, char* argv[]) {
 
 
 #ifndef DEBUG
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]){
     init();
     start();
     return 0;

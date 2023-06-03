@@ -30,25 +30,30 @@ using StatusCodeHandle = HTTPUtil::StatusCodeHandle;
 constexpr int amount_spaces{ 2 };
 
 class PhigrosController final {
+private:
+    CrowApp& m_app;
+    std::unique_ptr<PhigrosService> m_phigros_service;
+    PhigrosController() = delete;
 public:
-	~PhigrosController() = default;
+    ~PhigrosController() = default;
 
-	explicit PhigrosController(CrowApp& app, std::unique_ptr<PhigrosService> phigros_service)
-		: m_app{ app }, m_phigros_service{ std::move(phigros_service) } {};
+    explicit PhigrosController(CrowApp& app, std::unique_ptr<PhigrosService> phigros_service)
+        : m_app{ app }, m_phigros_service{ std::move(phigros_service) } {};
 
-	const inline void controller(void) {
+    const inline void controller(void) {
         CROW_ROUTE(m_app, "/phi/drawInfo").methods("GET"_method)([&](const crow::request& req) {
             crow::response response;
             response.add_header("Cache-Control", "no-cache");
             response.add_header("Pragma", "no-cache");
             try {
-                constexpr const char* PARAMS[] { "songId","QRcode" };
+                constexpr const char* PARAMS[]{ "songId","QRcode" };
                 int song_id{};
                 bool is_qr_code{ false };
 
                 if (OtherUtil::verifyParam(req, PARAMS[0])) {
                     song_id = std::stoi(req.url_params.get(PARAMS[0]));
-                } else {
+                }
+                else {
                     response.set_header("Content-Type", "application/json");
                     response.code = 400;
                     response.write(StatusCodeHandle::getSimpleJsonResult(400, "parameter 'songId' required and parameter cannot be empty.").dump(amount_spaces));
@@ -63,7 +68,7 @@ public:
                 LogSystem::logInfo(std::format("[Phigros]绘制曲目信息 ------ ID:{} / QRcode:{}", song_id, content));
 
                 cv::Mat result{ m_phigros_service->drawSongInfomation(
-                    std::move(song_id),std::move(is_qr_code),std::move(content))};
+                    std::move(song_id),std::move(is_qr_code),std::move(content)) };
 
                 std::vector<uchar> data;
                 cv::imencode(".png", result, data);
@@ -73,15 +78,18 @@ public:
                 response.set_header("Content-Type", "image/png");
                 response.write(imgStr);
                 return response;
-            } catch (const self::TimeoutException& e) {
+            }
+            catch (const self::TimeoutException& e) {
                 LogSystem::logError("[Phigros]绘制曲目信息 ------ API请求超时");
                 response.code = 408;
                 response.write(StatusCodeHandle::getSimpleJsonResult(408, "Data API request timeout").dump(amount_spaces));
-            } catch (const std::runtime_error& e) {
+            }
+            catch (const std::runtime_error& e) {
                 LogSystem::logError(std::format("[Phigros]绘制曲目信息 ------ msg: {} / code: {}", e.what(), 500));
                 response.code = 500;
                 response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what()).dump(amount_spaces));
-            } catch (const std::exception& e) {
+            }
+            catch (const std::exception& e) {
                 LogSystem::logError(std::format("[Phigros]绘制曲目信息 ------ msg: {} / code: {}", e.what(), 500));
                 response.code = 500;
                 response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what()).dump(amount_spaces));
@@ -89,23 +97,24 @@ public:
             response.set_header("Content-Type", "application/json");
 
             return response;
-        });
+            });
 
 
         CROW_ROUTE(m_app, "/phi/drawSingle").methods("POST"_method)([&](const crow::request& req) {
 
             std::string song_id{}, avatar_base64{};
             Ubyte level{ 2 };
+            uint8_t style { 1 };
             crow::response response;
             response.add_header("Cache-Control", "no-cache");
             response.add_header("Pragma", "no-cache");
-            try { 
+            try {
                 // 测试玩家名
                 //std::string playerNameTest{ req.url_params.get("player")};
                 //cv::Mat result{ m_phigros_service->drawSongInfomation(
                 //    std::move(song_id),std::move(is_qr_code),std::move(content)) };
 
-                Json jsonData{ json::parse(req.body)};
+                Json jsonData{ json::parse(req.body) };
 
                 std::exchange(jsonData, jsonData[0]);
 
@@ -126,13 +135,30 @@ public:
                 if (jsonData.contains("avatar_base64")) {
                     avatar_base64 = jsonData["avatar_base64"].get<std::string>();
                 }
+                if (jsonData.contains("style")) {
+                    style = jsonData["style"].get<uint8_t>();
+                }
 
-                std::string 
+                std::string
                     authorization{ req.get_header_value("Authorization") },
-                    sessionToken { req.get_header_value("SessionToken") };
+                    sessionToken{ req.get_header_value("SessionToken") };
 
                 LogSystem::logInfo(std::format("[Phigros]绘制玩家BEST ------ SongID:{} / SessionToken:{}", song_id, sessionToken));
-                cv::Mat result{ m_phigros_service->drawPlayerSingleInfo(song_id, level,authorization,sessionToken,avatar_base64) };
+                cv::Mat result{ };
+
+                switch (style)
+                {
+                case 0:
+                    LogSystem::logInfo("[Phigros]绘制玩家BEST ------ 风格样式0(OLD)");
+                    result = m_phigros_service->drawPlayerSingleInfo(song_id, level, authorization, sessionToken, avatar_base64);
+                    break;
+                case 1:
+                    LogSystem::logInfo("[Phigros]绘制玩家BEST ------ 风格样式1(NEW)");
+                    result = m_phigros_service->drawPlayerSingleInfoModernStyle(song_id, level, authorization, sessionToken, avatar_base64);
+                    break;
+                default:
+                    throw self::HTTPException("Style does not exist.", 400);
+                }
 
                 std::vector<uchar> data;
                 cv::imencode(".png", result, data);
@@ -153,7 +179,8 @@ public:
                 }
                 LogSystem::logError(std::format("[Phigros]绘制玩家BEST ------ msg: {} / code: {}", e.what(), e.getCode()));
                 response.code = e.getCode();
-            }catch (const self::TimeoutException& e) {
+            }
+            catch (const self::TimeoutException& e) {
                 LogSystem::logError("[Phigros]绘制玩家BEST ------ API请求超时");
                 response.write(StatusCodeHandle::getSimpleJsonResult(408, "Data API request timeout").dump(amount_spaces));
                 response.code = 408;
@@ -168,16 +195,61 @@ public:
                 response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what()).dump(amount_spaces));
                 response.code = 500;
             }
-            
+
             response.set_header("Content-Type", "application/json");
             return response;
             }
         );
-	};
-private:
-	CrowApp& m_app;
-	std::unique_ptr<PhigrosService> m_phigros_service;
-	PhigrosController() = delete;
+
+#ifdef DEBUG
+        CROW_ROUTE(m_app, "/phi/test").methods("GET"_method)([&](const crow::request& req) {
+            crow::response response;
+            response.add_header("Cache-Control", "no-cache");
+            response.add_header("Pragma", "no-cache");
+
+            try {
+                cv::Mat result{ m_phigros_service->drawPlayerSingleInfoModernStyle("190", 2,"GPwXIOrICHgSWB6rUXhSLmWQ","fajloh66ac75y3yg3i0a54k64","") };
+
+                std::vector<uchar> data;
+                cv::imencode(".png", result, data);
+                result.release();
+                std::string imgStr(data.begin(), data.end());
+
+                response.set_header("Content-Type", "image/png");
+                response.write(imgStr);
+                return response;
+            }catch (const self::HTTPException& e) {
+                if (e.getMessage().empty())
+                {
+                    response.write(StatusCodeHandle::getSimpleJsonResult(e.getCode()).dump(amount_spaces));
+                }
+                else {
+                    response.write(StatusCodeHandle::getSimpleJsonResult(e.getCode(), e.getMessage()).dump(amount_spaces));
+                }
+                LogSystem::logError(std::format("[Phigros]绘制玩家BEST NEW ------ msg: {} / code: {}", e.what(), e.getCode()));
+                response.code = e.getCode();
+            }
+            catch (const self::TimeoutException& e) {
+                LogSystem::logError("[Phigros]绘制玩家BEST NEW ------ API请求超时");
+                response.write(StatusCodeHandle::getSimpleJsonResult(408, "Data API request timeout").dump(amount_spaces));
+                response.code = 408;
+            }
+            catch (const std::runtime_error& e) {
+                LogSystem::logError(std::format("[Phigros]绘制玩家BEST NEW ------ msg: {} / code: {}", e.what(), 500));
+                response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what()).dump(amount_spaces));
+                response.code = 500;
+            }
+            catch (const std::exception& e) {
+                LogSystem::logError(std::format("[Phigros]绘制玩家BEST NEW ------ msg: {} / code: {}", e.what(), 500));
+                response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what()).dump(amount_spaces));
+                response.code = 500;
+            }
+
+            response.set_header("Content-Type", "application/json");
+            return response;
+        });
+#endif
+    };
 };
 
 #endif // !PHIGROS_CONTROLLER_HPP

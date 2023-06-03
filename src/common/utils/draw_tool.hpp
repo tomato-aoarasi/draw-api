@@ -294,6 +294,7 @@ public:
         img1.release();
         img2.release();
     };
+
 private:
     // 角度转弧度
     template <typename T>
