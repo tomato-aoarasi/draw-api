@@ -67,7 +67,17 @@ private:
 			img.release();
 			return cv::imread("draw/phi/UnknowAvatar.png", cv::IMREAD_UNCHANGED);
 		}
-		return std::move(img);
+
+		std::vector<cv::Mat> mv;
+		split(img, mv);
+
+		cv::Mat dst(img.size(), CV_8UC4, cv::Scalar(0, 0, 0, 255));
+
+		int from_to[] = { 0,0,1,1,2,2 };  // 0通道换到2通道  1通道换到1通道 2通道换到0通道
+		mixChannels(&img, 1, &dst, 1, from_to, 3);
+		img.release();
+
+		return std::move(dst);
 	}
 public:
 	~PhigrosServiceImpl() {
@@ -1004,7 +1014,7 @@ public:
 			cv::Mat playerHead{ !avatar_base64.empty() ? base64ToMat(avatar_base64.data()) : cv::imread("draw/phi/UnknowAvatar.png", cv::IMREAD_UNCHANGED) },
 				playerHeadBox(h, 166, CV_8UC4, cv::Scalar(0, 0, 0, 0));
 
-			resize(playerHead, playerHead, cv::Size(150, 150));
+			cv::resize(playerHead, playerHead, cv::Size(150, 150));
 
 			// 定义平行四边形的四个顶点坐标
 			std::vector<cv::Point> points{
@@ -1034,7 +1044,6 @@ public:
 			cv::drawContours(playerHeadBox, contours, 0, cv::Scalar(77, 77, 77, 255), -1, LINE_AA);
 
 			cv::drawContours(playerHead, contours1, 0, cv::Scalar(0, 0, 0, 0), -1, LINE_AA);
-
 			DrawTool::transparentPaste(playerHeadBox, dstImg, 1794, 33);
 			DrawTool::transparentPaste(playerHead, dstImg, 1802, 17);
 			playerHeadBox.release();
