@@ -53,8 +53,8 @@ private:
 		shadow_corner{ cv::imread("draw/phi/ShadowCorner.png", cv::IMREAD_UNCHANGED) },
 		playerRKSBox{ cv::imread("draw/phi/rksBox.png", cv::IMREAD_UNCHANGED) },
 		dataFrame{ cv::imread("draw/phi/DataFrame.png", cv::IMREAD_UNCHANGED) },
-		personal_single_song_info_shadow{ cv::imread("draw/phi/PersonalSingleSongInfoShadow.png",cv::IMREAD_UNCHANGED) };
-
+		personal_single_song_info_shadow{ cv::imread("draw/phi/PersonalSingleSongInfoShadow.png",cv::IMREAD_UNCHANGED) },
+		b19_shadow{ cv::Mat(cv::Size(2048, 1080), CV_8UC4) };
 	// base64解码为cv::Mat
 	cv::Mat base64ToMat(const std::string& base64Str) {
 		// 将base64字符串转换为字节数组
@@ -64,6 +64,7 @@ private:
 		// 从字节数组中读取图像
 		cv::Mat img{ cv::imdecode(data, cv::IMREAD_UNCHANGED) };
 		if (img.empty()) {
+			img.release();
 			return cv::imread("draw/phi/UnknowAvatar.png", cv::IMREAD_UNCHANGED);
 		}
 		return std::move(img);
@@ -79,6 +80,28 @@ public:
 
 	PhigrosServiceImpl() {
 		cv::flip(shadow_corner, shadow_corner, -1);
+		{
+			cv::Mat b19_shadow(cv::Size(2048, 1080), CV_8UC4, cv::Scalar(0, 0, 0, 0));
+			// 定义渐变的起始和结束颜色
+			cv::Scalar startColor(0, 0, 0, 0);
+			cv::Scalar endColor(0, 0, 0, 255);
+
+			constexpr const double init_pos_ratio{ 0.15 };
+			std::cout << "col: " << b19_shadow.cols << ",rows: " << b19_shadow.rows << std::endl;
+			for (int y{ (int)(b19_shadow.rows * init_pos_ratio) }; y < b19_shadow.rows; y++)
+			{
+				double ratio{ ((double)y - b19_shadow.rows * init_pos_ratio) / (b19_shadow.rows - b19_shadow.rows * init_pos_ratio) };
+				// 计算当前行的颜色
+				cv::Scalar color{ startColor * (1 - ratio) + endColor * (ratio) };
+
+				std::cout << color << std::endl;
+
+				// 绘制矩形
+				cv::rectangle(b19_shadow, cv::Point(0, y), cv::Point(b19_shadow.cols, y), color, -1, cv::LINE_AA);
+			}
+			b19_shadow.copyTo(this->b19_shadow);
+			b19_shadow.release();
+		}
 	};
 
 	inline cv::Mat drawSongInfomation(int song_id, bool isQRCode, std::string_view QRCodeContent) override {
