@@ -87,14 +87,14 @@ public:
 			cv::Scalar endColor(0, 0, 0, 255);
 
 			constexpr const double init_pos_ratio{ 0.15 };
-			std::cout << "col: " << b19_shadow.cols << ",rows: " << b19_shadow.rows << std::endl;
+			// std::cout << "col: " << b19_shadow.cols << ",rows: " << b19_shadow.rows << std::endl;
 			for (int y{ (int)(b19_shadow.rows * init_pos_ratio) }; y < b19_shadow.rows; y++)
 			{
 				double ratio{ ((double)y - b19_shadow.rows * init_pos_ratio) / (b19_shadow.rows - b19_shadow.rows * init_pos_ratio) };
 				// 计算当前行的颜色
 				cv::Scalar color{ startColor * (1 - ratio) + endColor * (ratio) };
 
-				std::cout << color << std::endl;
+				// std::cout << color << std::endl;
 
 				// 绘制矩形
 				cv::rectangle(b19_shadow, cv::Point(0, y), cv::Point(b19_shadow.cols, y), color, -1, cv::LINE_AA);
