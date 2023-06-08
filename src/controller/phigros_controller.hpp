@@ -103,7 +103,8 @@ public:
         CROW_ROUTE(m_app, "/phi/drawSingle").methods("POST"_method)([&](const crow::request& req) {
 
             std::string song_id{}, avatar_base64{};
-            Ubyte level{ 2 };
+            /* EZ:0, HD:1, IN:2, AT:3, Auto: 4 */
+            Ubyte level{ 4 };
             uint8_t style { 1 };
             crow::response response;
             response.add_header("Cache-Control", "no-cache");
@@ -122,8 +123,7 @@ public:
                 //std::cout << jsonData.contains("level"s) << std::endl;
                 if (jsonData.contains("songId")) {
                     song_id = jsonData["songId"].get<std::string>();
-                }
-                else {
+                } else {
                     response.set_header("Content-Type", "application/json");
                     response.code = 400;
                     response.write(StatusCodeHandle::getSimpleJsonResult(400, "parameter 'songId' required and parameter cannot be empty.").dump(amount_spaces));
