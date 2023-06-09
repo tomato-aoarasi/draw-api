@@ -69,8 +69,11 @@ private:
 		if (img.empty()) {
 			img.release();
 			return cv::imread("draw/phi/UnknowAvatar.png", cv::IMREAD_UNCHANGED);
+		}else if (img.type() == 0){
+			cv::cvtColor(img, img, cv::COLOR_GRAY2BGR);
+		}else if (img.type() == 24) {
+			return std::move(img);
 		}
-
 		std::vector<cv::Mat> mv;
 		split(img, mv);
 
@@ -79,6 +82,8 @@ private:
 		int from_to[] = { 0,0,1,1,2,2 };  // 0通道换到2通道  1通道换到1通道 2通道换到0通道
 		mixChannels(&img, 1, &dst, 1, from_to, 3);
 		img.release();
+
+		//std::cout << dst.type() << std::endl;
 
 		return std::move(dst);
 	}
