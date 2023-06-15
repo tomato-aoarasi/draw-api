@@ -934,7 +934,7 @@ public:
 
 		std::string
 			playerName{ api_data.at("playerNickname").get<std::string>() },
-			updateTimeStr{ "Upload Date: "s + api_data.at("updateTime").get<std::string>() };
+			updateTimeStr{ "Upload Time: "s + api_data.at("updateTime").get<std::string>() };
 		double player_rks{ api_data.at("rankingScore").get<double>() };
 		int player_form_offset_x{};
 

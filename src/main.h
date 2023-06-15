@@ -44,7 +44,7 @@ namespace std {
 #define MAIN_H
 
 // 设置1为开启跨域访问(想要性能问题的话建议关闭,使用反向代理)
-#define CORS_OPEN  0  
+#define CORS_OPEN 0
 //初始化
 inline void init(void) {
     Config::initialized();
@@ -69,7 +69,7 @@ inline void start(void){
 
 #if CORS_OPEN
     // 跨域访问
-    if (has_cors) {
+    if (1) {
         auto& cors = app.get_middleware<crow::CORSHandler>();
         cors
             .global()
