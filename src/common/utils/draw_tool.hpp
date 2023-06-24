@@ -255,7 +255,7 @@ public:
                 mat.at<cv::Vec4b>(i, j)[0] = (1 - temp) * img1.at<cv::Vec4b>(i, j)[0] + temp * img2.at<cv::Vec4b>(i, j)[0];
                 mat.at<cv::Vec4b>(i, j)[1] = (1 - temp) * img1.at<cv::Vec4b>(i, j)[1] + temp * img2.at<cv::Vec4b>(i, j)[1];
                 mat.at<cv::Vec4b>(i, j)[2] = (1 - temp) * img1.at<cv::Vec4b>(i, j)[2] + temp * img2.at<cv::Vec4b>(i, j)[2];
-                mat.at<cv::Vec4b>(i, j)[3] = (1 - temp) * img1.at<cv::Vec4b>(i, j)[3] + temp * img2.at<cv::Vec4b>(i, j)[3];
+                //mat.at<cv::Vec4b>(i, j)[3] = (1 - temp) * img1.at<cv::Vec4b>(i, j)[3] + temp * img2.at<cv::Vec4b>(i, j)[3];
             }
         }
         roi = cv::Rect(left, top, ini_x, ini_y);

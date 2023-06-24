@@ -11,6 +11,7 @@
 #include <string>
 #include <cmath>
 #include <vector>
+#include <array>
 #include <thread>
 #include <numbers>
 #include <stdexcept>
@@ -47,17 +48,19 @@ using namespace std::chrono_literals;
 
 class PhigrosServiceImpl : public PhigrosService {
 private:
-	cv::Mat
+	inline static cv::Mat
 		phigros{ cv::imread("draw/phi/Phigros.png", cv::IMREAD_UNCHANGED) },
 		shadow{ cv::imread("draw/phi/Shadow.png", cv::IMREAD_UNCHANGED) },
 		shadow_corner{ cv::imread("draw/phi/ShadowCorner.png", cv::IMREAD_UNCHANGED) },
 		playerRKSBox{ cv::imread("draw/phi/rksBox.png", cv::IMREAD_UNCHANGED) },
 		dataFrame{ cv::imread("draw/phi/DataFrame.png", cv::IMREAD_UNCHANGED) },
 		personal_single_song_info_shadow{ cv::imread("draw/phi/PersonalSingleSongInfoShadow.png",cv::IMREAD_UNCHANGED) },
-		b19_background { cv::imread("draw/phi/background.png",cv::IMREAD_UNCHANGED) },
-		b19_profile{ cv::imread("draw/phi/profile.png",cv::IMREAD_UNCHANGED) },
-		b19_record{ cv::imread("draw/phi/record.png",cv::IMREAD_UNCHANGED) },
-		b19_shadow{ cv::Mat(cv::Size(2048, 1080), CV_8UC4) };
+		b19_record1{ cv::imread("draw/phi/record1.png",cv::IMREAD_UNCHANGED) },
+		b19_record_sign{ cv::imread("draw/phi/record_sign.png",cv::IMREAD_UNCHANGED) },
+		b19_shadow{ cv::Mat(cv::Size(345, 189), CV_8UC4) },
+		unknow { cv::imread("draw/phi/Unknow.png",cv::IMREAD_UNCHANGED) },
+		overflow { cv::imread("draw/phi/overflow.png",cv::IMREAD_UNCHANGED) },
+		b19_background{ cv::imread("draw/phi/background_p.png",cv::IMREAD_UNCHANGED) };
 	// base64解码为cv::Mat
 	cv::Mat base64ToMat(const std::string& base64Str) {
 		// 将base64字符串转换为字节数组
@@ -93,16 +96,23 @@ public:
 		shadow.release();
 		shadow_corner.release();
 		personal_single_song_info_shadow.release();
+		dataFrame.release();
 		playerRKSBox.release();
+		b19_record1.release();
+		b19_record_sign.release();
+		b19_shadow.release();
+		b19_background.release();
+		unknow.release();
+		overflow.release();
 	};
 
 	PhigrosServiceImpl() {
 		cv::flip(shadow_corner, shadow_corner, -1);
 		{
-			cv::Mat b19_shadow(cv::Size(2048, 1080), CV_8UC4, cv::Scalar(0, 0, 0, 0));
+			cv::Mat b19_shadow(this->b19_shadow.size(), CV_8UC4, cv::Scalar(0, 0, 0, 0));
 			// 定义渐变的起始和结束颜色
 			cv::Scalar startColor(0, 0, 0, 0);
-			cv::Scalar endColor(0, 0, 0, 255);
+			cv::Scalar endColor(0, 0, 0, 230);
 
 			constexpr const double init_pos_ratio{ 0.15 };
 			// std::cout << "col: " << b19_shadow.cols << ",rows: " << b19_shadow.rows << std::endl;
@@ -515,18 +525,18 @@ public:
 					auto err{ res.error() };
 					if (err != httplib::Error::Success)
 					{
-						httpexception = self::HTTPException(httplib::to_string(err), 500);
+						httpexception = self::HTTPException(httplib::to_string(err), 500, 1);
 						flag = true;
 						return Json();
 					}
 
 					try {
-						httpexception = self::HTTPException(json::parse(res->body)["detail"].get<std::string>(),res->status);
+						httpexception = self::HTTPException(json::parse(res->body).at("detail").get<std::string>(),res->status, json::parse(res->body).at("status").get<uint16_t>());
 						flag = true;
 						return Json();
 					}
 					catch (...) {
-						httpexception = self::HTTPException("", res->status);
+						httpexception = self::HTTPException("", res->status, 1);
 						flag = true;
 						return Json();
 					}
@@ -537,14 +547,14 @@ public:
 				std::future_status status{ future.wait_for(playerTimeout) };
 
 				if (status == std::future_status::timeout) {
-					httpexception = self::HTTPException("请求超时", 408);
+					httpexception = self::HTTPException("请求超时", 408, 2);
 					flag = true;
 					return;
 				}
 				playerData = future.get();
 			}
 			catch (const std::runtime_error& e) {
-				httpexception = self::HTTPException(e.what());
+				httpexception = self::HTTPException(e.what(), 1);
 			}
 			// =================================================
 			});;
@@ -899,16 +909,23 @@ public:
 			auto err{ res.error() };
 			if (err != httplib::Error::Success)
 			{
-				throw self::HTTPException(httplib::to_string(err), 500);
+				throw self::HTTPException(httplib::to_string(err), 500, 1);
 			}
 
 			try {
-				httpexception = self::HTTPException(json::parse(res->body).at("detail").get<std::string>(), res->status);
+				if (json::parse(res->body).contains("detail") && json::parse(res->body).contains("status"))
+				{
+					httpexception = self::HTTPException(json::parse(res->body).at("detail").get<std::string>(), res->status, json::parse(res->body).at("status").get<uint16_t>());
+				}
+				else if (json::parse(res->body).contains("detail")) {
+					httpexception = self::HTTPException(json::parse(res->body).at("detail").get<std::string>(), res->status, 1);
+				}
+				httpexception = self::HTTPException("", res->status, json::parse(res->body).at("status").get<uint16_t>());
 				flag = true;
 				return Json();
 			}
 			catch (...) {
-				httpexception = self::HTTPException("", res->status);
+				httpexception = self::HTTPException("", res->status, 1);
 				flag = true;
 				return Json();
 			} }
@@ -917,7 +934,7 @@ public:
 		std::future_status status{ future.wait_for(playerTimeout) };
 
 		if (status == std::future_status::timeout) {
-			httpexception = self::HTTPException("请求超时", 408);
+			httpexception = self::HTTPException("请求超时", 408, 2);
 			flag = true;
 		}
 		api_data = future.get();
@@ -1151,7 +1168,6 @@ public:
 
 		courseRating.release();
 		rate.release();
-		courseRating.release();
 		illustration.release();
 		rightBlackTransparentMask.release();
 		leftBlackTransparentMask.release();
@@ -1264,6 +1280,638 @@ public:
 		freetype2->putText(result, "Powerd by yuhao7370. Generated by tomato Team - Phigros.", cv::Point(20, size_h - 36), 28, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
 		freetype2.release();
 
+		return result;
+	}
+
+	inline cv::Mat drawB19(std::string_view auth_token, std::string_view  player_session_token, std::string_view avatar_base64) override {
+		Json api_data{};
+		
+		// ======================================
+		httplib::Client client(Global::PhiPlayDataAPI, 8299);
+		// 创建Authorization头部
+		std::string auth_header = "Bearer "s + auth_token.data();
+
+		// 创建Get请求
+		httplib::Headers headers = {
+			{"Authorization", auth_header},
+			{"SessionToken", player_session_token.data()},
+		};
+
+
+		bool flag{ false };
+		self::HTTPException httpexception;
+		constexpr std::chrono::seconds playerTimeout{ 30s };
+		std::future<Json> future{ std::async(std::launch::async,[&]()->Json {
+			httplib::Result res { client.Get("/proxy/phi/all", headers)};
+			// 到时候加一个超时
+			if (res && res->status == 200) return json::parse(res->body);
+
+			auto err{ res.error() };
+			if (err != httplib::Error::Success)
+			{
+				throw self::HTTPException(httplib::to_string(err), 500, 1);
+			}
+
+			try {
+				if (json::parse(res->body).contains("detail") && json::parse(res->body).contains("status"))
+				{
+					httpexception = self::HTTPException(json::parse(res->body).at("detail").get<std::string>(), res->status, json::parse(res->body).at("status").get<uint16_t>());
+				}
+				else if (json::parse(res->body).contains("detail")) {
+					httpexception = self::HTTPException(json::parse(res->body).at("detail").get<std::string>(), res->status, 1);
+				}
+				httpexception = self::HTTPException("", res->status, json::parse(res->body).at("status").get<uint16_t>());
+				flag = true;
+				return Json();
+			}
+			catch (...) {
+				httpexception = self::HTTPException("", res->status, 1);
+				flag = true;
+				return Json();
+			} }
+		) };
+		// --------------------
+		std::future_status status{ future.wait_for(playerTimeout) };
+
+		if (status == std::future_status::timeout) {
+			httpexception = self::HTTPException("请求超时", 408, 2);
+			flag = true;
+		}
+		api_data = future.get();
+
+		if (flag) {
+			throw httpexception;
+		}
+		std::exchange(api_data, api_data.at("content"));
+
+		//std::cout << api_data << std::endl;
+
+		std::vector<Json> player_all_data = api_data.at("best_list").at("best").get<std::vector<Json>>();
+
+		std::size_t all_data_size{ player_all_data.size() };
+		bool is_phi{ api_data.at("best_list").at("is_phi").get<bool>() };
+
+		// =======================================================
+		cv::Ptr<freetype::FreeType2> freetype2{ cv::freetype::createFreeType2() };
+		cv::Mat draw{ b19_background.clone() };
+		cv::Mat illustration_shadow{ b19_shadow.clone() };
+		cv::Mat unknow{ this->unknow.clone()};
+		cv::resize(unknow, unknow, illustration_shadow.size());
+
+		DrawTool::transparentPaste(phigros, draw, 117, 47, 0.8f, 0.8f);
+		int playerCourseRanking{ api_data.at("challengeModeRank").get<int>() };
+
+		constexpr const int overflow_line_y{ 2266 };
+
+		cv::Mat courseRating{ };
+
+		switch (playerCourseRanking / 100)
+		{
+		case 1:
+			courseRating = cv::imread("draw/phi/rating/uniformSize/1.png", cv::IMREAD_UNCHANGED);
+			break;
+		case 2:
+			courseRating = cv::imread("draw/phi/rating/uniformSize/2.png", cv::IMREAD_UNCHANGED);
+			break;
+		case 3:
+			courseRating = cv::imread("draw/phi/rating/uniformSize/3.png", cv::IMREAD_UNCHANGED);
+			break;
+		case 4:
+			courseRating = cv::imread("draw/phi/rating/uniformSize/4.png", cv::IMREAD_UNCHANGED);
+			break;
+		case 5:
+			courseRating = cv::imread("draw/phi/rating/uniformSize/5.png", cv::IMREAD_UNCHANGED);
+			break;
+		default:
+			courseRating = cv::imread("draw/phi/rating/uniformSize/0.png", cv::IMREAD_UNCHANGED);
+			break;
+		}
+		playerCourseRanking = playerCourseRanking % 100;
+
+		DrawTool::transparentPaste(courseRating, draw, 600, 220, 0.21f, 0.21f, cv::INTER_AREA);
+
+		// 玩家框
+		{
+			cv::Mat playerFormRKS(cv::Size(90, 25), CV_8UC4, cv::Scalar(0, 0, 0, 0));
+
+			const int height_rks{ static_cast<int>(playerFormRKS.rows * std::tan(15.9 * std::numbers::pi / 180.0)) }; // 96 * tan(15.9°) = 27.346319361909209215659939610795
+			std::vector<cv::Point> points_rks{
+				cv::Point(0, playerFormRKS.rows),
+				cv::Point(height_rks, 0),
+				cv::Point(playerFormRKS.cols - 3, 0),
+				cv::Point(playerFormRKS.cols - height_rks - 3, playerFormRKS.rows)
+			};
+			std::vector<std::vector<cv::Point>> contours_rks;
+			contours_rks.emplace_back(points_rks);
+			cv::drawContours(playerFormRKS, contours_rks, 0, cv::Scalar(255, 255, 255, 255), -1, LINE_AA);
+
+			DrawTool::transparentPaste(playerFormRKS, draw, 590, 258);
+			playerFormRKS.release();
+
+			cv::Mat playerForm(cv::Size(520, 85), CV_8UC4, cv::Scalar(0, 0, 0, 0));
+			// 定义平行四边形的四个顶点坐标
+
+			const int height{ static_cast<int>(playerForm.rows * std::tan(15.9 * std::numbers::pi / 180.0 ))}; // 96 * tan(15.9°) = 27.346319361909209215659939610795
+
+			std::vector<cv::Point> points{
+				cv::Point(0, playerForm.rows),
+				cv::Point(height, 0),
+				cv::Point(playerForm.cols - 2, 0),
+				cv::Point(playerForm.cols - height - 2, playerForm.rows)
+			};
+
+			// 将顶点坐标存储到一个向量中
+			std::vector<std::vector<cv::Point>> contours;
+			contours.emplace_back(points);
+			cv::drawContours(playerForm, contours, 0, cv::Scalar(0, 0, 0, 178), -1, LINE_AA);
+			
+			DrawTool::transparentPaste(playerForm, draw, 90, 213);
+
+			playerForm.release();
+		}
+
+		// 玩家头像
+		{
+			constexpr const int h{ 108 };
+
+			cv::Mat player_avatar{ !avatar_base64.empty() ? base64ToMat(avatar_base64.data()) : cv::imread("draw/phi/UnknowAvatar.png", cv::IMREAD_UNCHANGED) };
+
+			cv::resize(player_avatar, player_avatar, cv::Size(135, 135));
+
+			int avatar_height_offset{ static_cast<int>(player_avatar.rows * std::tan(15.9 * std::numbers::pi / 180.0) / 2.0 ) };
+
+			// 定义平行四边形的四个顶点坐标
+			std::vector<cv::Point> points{
+				cv::Point(player_avatar.cols - h, avatar_height_offset),
+				cv::Point(player_avatar.cols, avatar_height_offset),
+				cv::Point(h, player_avatar.rows - avatar_height_offset),
+				cv::Point(0, player_avatar.rows - avatar_height_offset),
+				cv::Point(0,player_avatar.rows),
+				cv::Point(player_avatar.cols,player_avatar.rows),
+				cv::Point(player_avatar.cols,0),
+				cv::Point(0,0),
+				cv::Point(0,player_avatar.rows - avatar_height_offset)
+			};
+
+			// 将顶点坐标存储到一个向量中
+			std::vector<std::vector<cv::Point>> contours{ points };
+			cv::drawContours(player_avatar, contours, 0, cv::Scalar(0, 0, 0, 0), -1, LINE_AA);
+			DrawTool::transparentPaste(player_avatar, draw, 107, 187);
+			player_avatar.release();
+		};
+
+		// 曲绘处理相关
+		{
+			// TODO
+			//=================================================
+			
+			int width_offset{ static_cast<int>(illustration_shadow.rows * std::tan(15.9 * std::numbers::pi / 180.0)) };
+
+			// 定义平行四边形的四个顶点坐标
+			std::vector<cv::Point> points{
+				cv::Point(0, illustration_shadow.rows),
+				cv::Point(0 + width_offset, 0),
+				cv::Point(illustration_shadow.cols - 1, 0),
+				cv::Point(illustration_shadow.cols - width_offset - 1, illustration_shadow.rows),
+				cv::Point(illustration_shadow.cols,illustration_shadow.rows),
+				cv::Point(illustration_shadow.cols,0),
+				cv::Point(illustration_shadow.cols,0),
+				cv::Point(0,0),
+				cv::Point(0,illustration_shadow.rows)
+			};
+
+			// 将顶点坐标存储到一个向量中
+			std::vector<std::vector<cv::Point>> contours{ points };
+			cv::drawContours(illustration_shadow, contours, 0, cv::Scalar(0, 0, 0, 0), -1, LINE_AA);
+			cv::drawContours(unknow, contours, 0, cv::Scalar(0, 0, 0, 0), -1, LINE_AA);
+
+			//=================================================
+			DrawTool::transparentPaste(b19_record1, draw, 45, 613);
+			DrawTool::transparentPaste(b19_record_sign, draw, 45, 613);
+
+			DrawTool::transparentPaste(cv::imread("draw/phi/rating/uniformSize/phi_old.png", cv::IMREAD_UNCHANGED), draw, 516, 644, 0.6f, 0.6f);
+			DrawTool::transparentPaste(b19_record1, draw, 406, 613);
+
+			constexpr const int rate_offset_x{ 233 }, rate_offset_y{ 122 };
+
+			// 含phi记录
+			if (is_phi) {
+				int socre{ api_data.at("best_list").at("phi").at("score").get<int>() };
+				bool is_fc{ api_data.at("best_list").at("phi").at("isfc").get<bool>() };
+				cv::Mat illustration{ cv::imread(Global::PhiResourcePath + api_data.at("best_list").at("phi").at("illustrationPath").get<std::string>(),cv::IMREAD_UNCHANGED) }, rate{ };
+
+				if (socre >= 1000000) {
+					rate = cv::imread("draw/phi/rating/uniformSize/phi_new.png", cv::IMREAD_UNCHANGED);
+				}
+				else if (is_fc) {
+					rate = cv::imread("draw/phi/rating/uniformSize/V_FC.png", cv::IMREAD_UNCHANGED);
+				}
+				else if (socre >= 960000) {
+					rate = cv::imread("draw/phi/rating/uniformSize/V_new.png", cv::IMREAD_UNCHANGED);
+				}
+				else if (socre >= 920000) {
+					rate = cv::imread("draw/phi/rating/uniformSize/s_new.png", cv::IMREAD_UNCHANGED);
+				}
+				else if (socre >= 880000) {
+					rate = cv::imread("draw/phi/rating/uniformSize/a_new.png", cv::IMREAD_UNCHANGED);
+				}
+				else if (socre >= 820000) {
+					rate = cv::imread("draw/phi/rating/uniformSize/B_new.png", cv::IMREAD_UNCHANGED);
+				}
+				else if (socre >= 700000) {
+					rate = cv::imread("draw/phi/rating/uniformSize/C_new.png", cv::IMREAD_UNCHANGED);
+				}
+				else {
+					rate = cv::imread("draw/phi/rating/uniformSize/F_new.png", cv::IMREAD_UNCHANGED);
+				}
+
+				cv::resize(illustration, illustration, illustration_shadow.size(), 0.0, 0.0, InterpolationFlags::INTER_LINEAR);
+				cv::drawContours(illustration, contours, 0, cv::Scalar(0, 0, 0, 0), -1, LINE_AA);
+				DrawTool::transparentPaste(illustration, draw, 422, 622);
+				DrawTool::transparentPaste(illustration_shadow, draw, 422, 622);
+				DrawTool::transparentPaste(rate, draw, 422 + rate_offset_x, 622 + rate_offset_y, 0.26f, 0.26f);
+				illustration.release();
+				rate.release();
+			}
+			// 曲目记录(不含phi)
+			for (int item{ 0 }; item < 22; ++item) {
+				int column{ (item + 2) % 3 }, row{ (item + 2) / 3 },
+					row_temp{ item < 19 ? 622 + 228 * row : overflow_line_y };
+				cv::Mat rate{ };
+				if(item <= all_data_size - 1) {
+					int socre{ player_all_data.at(item).at("score").get<int>() };
+					bool is_fc{ player_all_data.at(item).at("isfc").get<bool>() };
+					cv::Mat illustration{ cv::imread(Global::PhiResourcePath + player_all_data.at(item).at("illustrationPath").get<std::string>(), cv::IMREAD_UNCHANGED) };
+					
+					if (socre >= 1000000) {
+						rate = cv::imread("draw/phi/rating/uniformSize/phi_new.png", cv::IMREAD_UNCHANGED);
+					}
+					else if (is_fc) {
+						rate = cv::imread("draw/phi/rating/uniformSize/V_FC.png", cv::IMREAD_UNCHANGED);
+					}
+					else if (socre >= 960000) {
+						rate = cv::imread("draw/phi/rating/uniformSize/V_new.png", cv::IMREAD_UNCHANGED);
+					}
+					else if (socre >= 920000) {
+						rate = cv::imread("draw/phi/rating/uniformSize/s_new.png", cv::IMREAD_UNCHANGED);
+					}
+					else if (socre >= 880000) {
+						rate = cv::imread("draw/phi/rating/uniformSize/a_new.png", cv::IMREAD_UNCHANGED);
+					}
+					else if (socre >= 820000) {
+						rate = cv::imread("draw/phi/rating/uniformSize/B_new.png", cv::IMREAD_UNCHANGED);
+					}
+					else if (socre >= 700000) {
+						rate = cv::imread("draw/phi/rating/uniformSize/C_new.png", cv::IMREAD_UNCHANGED);
+					}
+					else {
+						rate = cv::imread("draw/phi/rating/uniformSize/F_new.png", cv::IMREAD_UNCHANGED);
+					}
+
+					cv::resize(illustration, illustration, illustration_shadow.size(), 0.0, 0.0, InterpolationFlags::INTER_LINEAR);
+					cv::drawContours(illustration, contours, 0, cv::Scalar(0, 0, 0, 0), -1, LINE_AA);
+
+					DrawTool::transparentPaste(illustration, draw, 61 + column * 361, row_temp);
+					illustration.release();
+				} else {
+					DrawTool::transparentPaste(unknow, draw, 61 + column * 361, row_temp);
+				}
+				
+				DrawTool::transparentPaste(illustration_shadow, draw, 61 + column * 361, row_temp); 
+				if (!rate.empty()) {
+					DrawTool::transparentPaste(rate, draw, 61 + column * 361 + rate_offset_x, row_temp + rate_offset_y, 0.26f, 0.26f);
+				}
+				
+				rate.release();
+			}
+		}
+
+		DrawTool::transparentPaste(overflow, draw, 0, 2200);
+		// =======================================================
+
+		illustration_shadow.release();
+		courseRating.release();
+		unknow.release();
+		
+		// =======================================================
+		cv::Mat result(draw.size(), CV_8UC3);
+
+		int from_to[] = { 0,0, 1,1, 2,2 };
+		mixChannels(&draw, 1, &result, 1, from_to, 3);
+		draw.release();
+		freetype2->loadFontData("draw/phi/font/SourceHanSans_SairaHybridRegularHot.ttf", 0);
+
+		const std::string updateTimeStr{ "Upload Time: "s + api_data.at("updateTime").get<std::string>() };
+		constexpr const int updateSize{ 24 };
+		const int updateTimeSizeWidth{ freetype2->getTextSize(updateTimeStr, updateSize, -1, nullptr).width };
+
+		freetype2->putText(result, updateTimeStr, cv::Point(1080 - updateTimeSizeWidth, 95), updateSize, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+		
+		{
+			constexpr const int max_size_w{ 322 },font_size{ 36 };
+			std::string player_nickname{ api_data.at("playerNickname").get<std::string>() };
+			int offset_w{ freetype2->getTextSize(player_nickname, font_size, -1, nullptr).width };
+			while (offset_w > max_size_w) {
+				std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+				std::wstring wstr = converter.from_bytes(player_nickname);
+
+				wstr.pop_back();
+
+				player_nickname = converter.to_bytes(wstr);
+				std::string temp{ player_nickname + "..."s };
+				offset_w = freetype2->getTextSize(temp, font_size, -1, nullptr).width;
+
+				if (offset_w <= max_size_w){
+					player_nickname = temp;
+					break;
+				}
+			}
+			freetype2->putText(result, player_nickname, cv::Point(248, 233), font_size, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+			//OtherUtil::Println("width size:", freetype2->getTextSize(player_nickname, font_size, -1, nullptr).width);
+		}
+		{
+			std::string player_course_ranking_rks_str{ OtherUtil::retainDecimalPlaces(api_data.at("rankingScore").get<double>()) };
+			constexpr const int rks_font_size { 24 };
+
+			const int player_rks_width_length{ freetype2->getTextSize(player_course_ranking_rks_str, rks_font_size, -1, nullptr).width };
+			freetype2->putText(result, player_course_ranking_rks_str, cv::Point(632 - player_rks_width_length / 2, 255), rks_font_size, cv::Scalar(0, 0, 0), -1, cv::LINE_AA, false);
+		
+			std::string player_course_ranking_str{std::to_string(playerCourseRanking)};
+			constexpr const int font_size{ 28 };
+
+			const int player_course_ranking_width_length{ freetype2->getTextSize(player_course_ranking_str, font_size, -1, nullptr).width };
+			freetype2->putText(result, player_course_ranking_str, cv::Point(640 - player_course_ranking_width_length / 2, 212), font_size, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+		}
+		freetype2->putText(result, "Powerd by yuhao7370. Generated by tomato Team - Phigros", cv::Point(254, 2490), 24, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+		
+		// profile
+		{
+			std::string profile { api_data.at("other").at("profile").get<std::string>()};
+
+			if (!profile.empty()){
+				constexpr const int font_size{ 21 }, max_size_w{ 545 };
+				std::vector profiles{ OtherUtil::split(profile, "\n") };
+				std::vector<std::string> profiles_handled{ };
+
+				// 存放std:string 与 位置
+				std::vector<std::string>temps{};
+
+				for (auto& element : profiles) {
+					//OtherUtil::Println(element);
+					bool flag{ false };
+
+					int offset_w{ freetype2->getTextSize(element, font_size, -1, nullptr).width };
+					std::string str_temp{ "" };
+
+
+					while (offset_w > max_size_w) {
+						std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+						std::wstring wstr = converter.from_bytes(element);
+
+						std::wstring w_temp{ wstr.back() };
+						wstr.pop_back();
+
+						element = converter.to_bytes(wstr);
+						str_temp = converter.to_bytes(w_temp) + str_temp;
+
+						//OtherUtil::Println(element,"\n", str_temp, offset_w);
+
+						offset_w = freetype2->getTextSize(element, font_size, -1, nullptr).width;
+
+						if (offset_w <= max_size_w) {
+							temps.emplace_back(element);
+							element = str_temp;
+							str_temp.clear();
+							offset_w = freetype2->getTextSize(element, font_size, -1, nullptr).width;
+							if (offset_w > max_size_w) {
+								continue;
+							}
+							temps.emplace_back(element);
+							flag = true;
+							break;
+						}
+					}
+
+					if (flag) {
+						for (std::string_view str : temps)
+							profiles_handled.emplace_back(str);
+					}
+					else {
+						profiles_handled.emplace_back(element);
+					}
+				}
+
+				//OtherUtil::Println("final");
+				int h{ 0 };
+
+				const std::size_t
+					length{ profiles_handled.size() },
+					max_rows{ length <= 7 ? length : 7 };
+				const int profile_height_length{ freetype2->getTextSize(profile, font_size, -1, nullptr).height };
+				constexpr const int magnification{ 2 };
+				int init_h{ 460 };
+				if (length & 1) {
+					init_h -= profile_height_length / 2;
+				}
+				init_h -= profile_height_length * (max_rows / 2) * magnification;
+
+
+				//OtherUtil::Println(init_h, profile_height_length);
+				for (std::size_t row{ 0 }; row < max_rows; ++row) {
+					//奇数
+
+					freetype2->putText(result, profiles_handled.at(row), cv::Point(142, init_h + h), font_size, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+					h += profile_height_length * magnification;
+				}
+			} else {
+				freetype2->putText(result, "Failed data acquisition", cv::Point(142, 435), 42, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+			}
+
+		}
+
+		// record
+		{
+			freetype2->putText(result, "\\       EZ    HD    IN    AT", cv::Point(150, 635), 22, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+			freetype2->putText(result, "Cleared", cv::Point(119, 679), 18, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+			freetype2->putText(result, "FC", cv::Point(108, 719), 18, cv::Scalar(255, 149, 82), -1, cv::LINE_AA, false); //BGR
+			freetype2->putText(result, "Phi", cv::Point(97, 759), 18, cv::Scalar(95, 255, 255), -1, cv::LINE_AA, false);
+
+			// record
+			{
+				Json record_data{ api_data.at("other").at("records") };
+
+				record_data.swap(record_data.at(0));
+
+				//OtherUtil::Println(record_data);
+
+				// 0:EZ 1:HD 2:IN 3:AT
+				// 0:Cleared 1:FC 2:Phi
+				std::array<std::array<uint16_t, 4>, 3> records
+				{
+					std::array<uint16_t, 4>{record_data["EZ"]["clear"].get<uint16_t>(), record_data["HD"]["clear"].get<uint16_t>(), record_data["IN"]["clear"].get<uint16_t>(), record_data["AT"]["clear"].get<uint16_t>()},
+					std::array<uint16_t, 4>{record_data["EZ"]["fc"].get<uint16_t>(), record_data["HD"]["fc"].get<uint16_t>(), record_data["IN"]["fc"].get<uint16_t>(), record_data["AT"]["fc"].get<uint16_t>()},
+					std::array<uint16_t, 4>{record_data["EZ"]["phi"].get<uint16_t>(), record_data["HD"]["phi"].get<uint16_t>(), record_data["IN"]["phi"].get<uint16_t>(), record_data["AT"]["phi"].get<uint16_t>()}
+				};
+				// x - l / 2
+
+				constexpr const int font_size{ 16 };
+
+				for (int row{ 0 }; row < records.size(); ++row) {
+					for (int column{ 0 }; column < records.at(row).size(); ++column){
+						std::string count{ std::to_string(records.at(row).at(column)) };
+						int w_length{ freetype2->getTextSize(count, font_size, -1, nullptr).width };
+
+						int pos_x{ (205 + column * 44 - 10 * row) - (w_length / 2) },pos_y{ 683 + row * 39 };
+
+						freetype2->putText(result, count, cv::Point(pos_x, pos_y), font_size, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+					}
+				}
+				
+			}
+		}
+
+		// 游戏成绩
+		{
+			const int graph_width{ b19_shadow.cols };
+			// phi
+			if (is_phi) {
+				// 422, 622  # h - 2
+
+				// title
+				{
+					constexpr const int max_size_w{ 145 }, font_size{ 18 };
+					std::string title{ api_data.at("best_list").at("phi").at("title").get<std::string>() };
+					int offset_w{ freetype2->getTextSize(title, font_size, -1, nullptr).width };
+
+					while (offset_w > max_size_w) {
+						std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+						std::wstring wstr = converter.from_bytes(title);
+
+						wstr.pop_back();
+
+						title = converter.to_bytes(wstr);
+						std::string temp{ title + "..."s };
+						offset_w = freetype2->getTextSize(temp, font_size, -1, nullptr).width;
+
+						if (offset_w <= max_size_w) {
+							title = temp;
+							break;
+						}
+					}
+
+
+					// ranking
+					{
+						constexpr const int font_size{ 12 };
+						std::string ranking{ "IN Lv."s + OtherUtil::retainDecimalPlaces(api_data.at("best_list").at("phi").at("level").get<double>(), 1) };
+						freetype2->putText(result, ranking, cv::Point(422 + 26 + offset_w + 8, 622 + 124), font_size, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+					}
+
+					freetype2->putText(result, title, cv::Point(422 + 26, 622 + 118), font_size, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+				}
+
+
+				// score
+				{
+					constexpr const int font_size{ 22 };
+					std::string score{ std::to_string(api_data.at("best_list").at("phi").at("score").get<int>()) };
+					const int text_width{ freetype2->getTextSize(score, font_size, -1, nullptr).width };
+					freetype2->putText(result, score, cv::Point(422 + 241 - text_width, 622 + 159), font_size, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+				}
+
+				// acc & rks
+				{
+					constexpr const int font_size{ 18 };
+					std::string 
+						rks{ OtherUtil::retainDecimalPlaces(api_data.at("best_list").at("phi").at("rankingSocre").get<double>())},
+						acc{ OtherUtil::retainDecimalPlaces(api_data.at("best_list").at("phi").at("acc").get<double>()) + "%"s };
+					freetype2->putText(result, rks, cv::Point(422 + 21, 622 + 143), font_size, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+					freetype2->putText(result, acc, cv::Point(422 + 78, 622 + 143), font_size, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+				}
+
+				// symbol
+				{
+					freetype2->putText(result, "Rate", cv::Point(422 + 19, 622 + 163), 12, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+					freetype2->putText(result, "Accuracy", cv::Point(422 + 76, 622 + 165), 10, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+				}
+			}
+
+			// 
+			for (int item{ 0 }; item < 22; ++item) {
+				int column{ (item + 2) % 3 }, row{ (item + 2) / 3 },
+					row_temp{ item < 19 ? 622 + 228 * row : overflow_line_y };
+				// #标记
+				if (item >= 1) {
+					constexpr const int font_size{ 25 };
+					std::string text{ "#"s + std::to_string(item + 1) };
+					int w_length{ freetype2->getTextSize(text, font_size, -1, nullptr).width };
+					freetype2->putText(result, text, cv::Point(column * 361 + graph_width - w_length + 56, row_temp - 26), font_size, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+				}
+
+				// 其他记录
+				if (item <= all_data_size - 1) {
+					//61 + column * 361, row_temp
+					// title
+					{
+						constexpr const int max_size_w{ 145 }, font_size{ 18 };
+						std::string title{ player_all_data.at(item).at("title").get<std::string>() };
+						int offset_w{ freetype2->getTextSize(title, font_size, -1, nullptr).width };
+
+						while (offset_w > max_size_w) {
+							std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+							std::wstring wstr = converter.from_bytes(title);
+
+							wstr.pop_back();
+
+							title = converter.to_bytes(wstr);
+							std::string temp{ title + "..."s };
+							offset_w = freetype2->getTextSize(temp, font_size, -1, nullptr).width;
+
+							if (offset_w <= max_size_w) {
+								title = temp;
+								break;
+							}
+						}
+
+						// ranking
+						{
+							constexpr const int font_size{ 12 };
+							std::string ranking{ "IN Lv."s + OtherUtil::retainDecimalPlaces(player_all_data.at(item).at("level").get<double>(), 1) };
+							freetype2->putText(result, ranking, cv::Point(61 + column * 361 + 26 + offset_w + 8, row_temp + 124), font_size, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+						}
+
+						freetype2->putText(result, title, cv::Point(61 + column * 361 + 26, row_temp + 118), font_size, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+					}
+
+					// score
+					{
+						constexpr const int font_size{ 22 };
+						std::string score{ OtherUtil::digitSupplementHandle(player_all_data.at(item).at("score").get<int>()) };
+						const int text_width{ freetype2->getTextSize(score, font_size, -1, nullptr).width };
+						freetype2->putText(result, score, cv::Point(61 + column * 361 + 241 - text_width, row_temp + 159), font_size, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+					}
+
+					// acc & rks
+					{
+						constexpr const int font_size{ 18 };
+						std::string
+							rks{ OtherUtil::retainDecimalPlaces(player_all_data.at(item).at("rankingSocre").get<double>()) },
+							acc{ OtherUtil::retainDecimalPlaces(player_all_data.at(item).at("acc").get<double>()) + "%"s };
+						freetype2->putText(result, rks, cv::Point(61 + column * 361 + 21, row_temp + 143), font_size, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+						freetype2->putText(result, acc, cv::Point(61 + column * 361 + 78, row_temp + 143), font_size, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+					}
+
+					// symbol
+					{
+						freetype2->putText(result, "Rate", cv::Point(61 + column * 361 + 19, row_temp + 163), 12, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+						freetype2->putText(result, "Accuracy", cv::Point(61 + column * 361 + 76, row_temp + 165), 10, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+					}
+				}
+			}
+		}
+
+		freetype2.reset();
+		freetype2.release();
 		return result;
 	}
 };

@@ -24,6 +24,32 @@ using namespace std::chrono_literals;
 class OtherUtil final {
 public:
     /// <summary>
+    /// 分割字符串为std::string
+    /// </summary>
+    /// <param name="str">需要分割的字符串</param>
+    /// <param name="pattern">分割的字符</param>
+    /// <returns>返回分割的std::string</returns>
+    inline static std::vector<std::string> split(std::string str, std::string pattern)
+    {
+        std::string::size_type pos;
+        std::vector<std::string> result;
+        str += pattern;//扩展字符串以方便操作
+        int size = str.size();
+        for (int i = 0; i < size; i++)
+        {
+            pos = str.find(pattern, i);
+            if (pos < size)
+            {
+                std::string s = str.substr(i, pos - i);
+                result.emplace_back(s);
+                i = pos + pattern.size() - 1;
+            }
+        }
+        return result;
+    }
+
+
+    /// <summary>
     /// 保留浮点数后N位
     /// </summary>
     /// <param name="f">数字</param>
@@ -135,6 +161,20 @@ public:
         }
         return data;
     }
+
+    // 懒人自用输入输出
+    template<typename... Tn>
+    inline static void Print(const Tn&... args) {
+        (..., (std::cout << args << " "));
+        std::cout.flush();
+    };
+
+    // 懒人自用输入输出
+    template<typename... Tn>
+    inline static void Println(const Tn&... args) {
+        (..., (std::cout << args << " "));
+        std::cout << std::endl;
+    };
 private:
 };
 

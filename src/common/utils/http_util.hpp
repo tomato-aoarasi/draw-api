@@ -87,7 +87,7 @@ public:
             NetworkAuthenticationRequired = 511
         };
 
-        const inline static json getJsonResult(status state, std::string_view msg = "") {
+        const inline static json getJsonResult(status state, std::string_view msg = "", uint16_t status_code = 1) {
             auto now{ std::chrono::system_clock::now() };
             std::time_t t = std::chrono::system_clock::to_time_t(std::move(now));
             std::tm local_tm = *std::localtime(&t);
@@ -97,6 +97,10 @@ public:
             json result;
             result["date"] = oss.str();
             result["code"] = state;
+
+            if (status_code) {
+                result["status"] = status_code;
+            }
 
             if (!msg.empty()) {
                 result["detail"] = msg;
@@ -361,8 +365,8 @@ public:
             }
         };
 
-        const inline static json getSimpleJsonResult(int code, std::string_view msg = "") {
-            return getJsonResult(getStatus(code), msg);
+        const inline static json getSimpleJsonResult(int code, std::string_view msg = "", uint16_t status_code = 1) {
+            return getJsonResult(getStatus(code), msg, status_code);
         };
     private:
         StatusCodeHandle(void) = delete;

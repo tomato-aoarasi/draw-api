@@ -56,7 +56,7 @@ public:
                 else {
                     response.set_header("Content-Type", "application/json");
                     response.code = 400;
-                    response.write(StatusCodeHandle::getSimpleJsonResult(400, "parameter 'songId' required and parameter cannot be empty.").dump(amount_spaces));
+                    response.write(StatusCodeHandle::getSimpleJsonResult(400, "parameter 'songId' required and parameter cannot be empty.", 3).dump(amount_spaces));
                     return response;
                 }
 
@@ -82,7 +82,7 @@ public:
             catch (const self::TimeoutException& e) {
                 LogSystem::logError("[Phigros]绘制曲目信息 ------ API请求超时");
                 response.code = 408;
-                response.write(StatusCodeHandle::getSimpleJsonResult(408, "Data API request timeout").dump(amount_spaces));
+                response.write(StatusCodeHandle::getSimpleJsonResult(408, "Data API request timeout", 2).dump(amount_spaces));
             }
             catch (const std::runtime_error& e) {
                 LogSystem::logError(std::format("[Phigros]绘制曲目信息 ------ msg: {} / code: {}", e.what(), 500));
@@ -126,7 +126,7 @@ public:
                 } else {
                     response.set_header("Content-Type", "application/json");
                     response.code = 400;
-                    response.write(StatusCodeHandle::getSimpleJsonResult(400, "parameter 'songId' required and parameter cannot be empty.").dump(amount_spaces));
+                    response.write(StatusCodeHandle::getSimpleJsonResult(400, "parameter 'songId' required and parameter cannot be empty.", 3).dump(amount_spaces));
                     return response;
                 }
                 if (jsonData.contains("level")) {
@@ -170,29 +170,81 @@ public:
                 return response;
             }
             catch (const self::HTTPException& e) {
-                if (e.getMessage().empty())
-                {
-                    response.write(StatusCodeHandle::getSimpleJsonResult(e.getCode()).dump(amount_spaces));
-                }
-                else {
-                    response.write(StatusCodeHandle::getSimpleJsonResult(e.getCode(), e.getMessage()).dump(amount_spaces));
-                }
-                LogSystem::logError(std::format("[Phigros]绘制玩家BEST ------ msg: {} / code: {}", e.what(), e.getCode()));
+                response.write(StatusCodeHandle::getSimpleJsonResult(e.getCode(), e.getMessage(), e.getStatus()).dump(amount_spaces));
+                LogSystem::logError(std::format("[Phigros]绘制玩家BEST ------ msg: {} / code: {} / status: {}", e.what(), e.getCode(), e.getStatus()));
                 response.code = e.getCode();
             }
             catch (const self::TimeoutException& e) {
                 LogSystem::logError("[Phigros]绘制玩家BEST ------ API请求超时");
-                response.write(StatusCodeHandle::getSimpleJsonResult(408, "Data API request timeout").dump(amount_spaces));
+                response.write(StatusCodeHandle::getSimpleJsonResult(408, "Data API request timeout", 2).dump(amount_spaces));
                 response.code = 408;
             }
             catch (const std::runtime_error& e) {
                 LogSystem::logError(std::format("[Phigros]绘制玩家BEST ------ msg: {} / code: {}", e.what(), 500));
-                response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what()).dump(amount_spaces));
+                response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what(), 1).dump(amount_spaces));
                 response.code = 500;
             }
             catch (const std::exception& e) {
                 LogSystem::logError(std::format("[Phigros]绘制玩家BEST ------ msg: {} / code: {}", e.what(), 500));
-                response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what()).dump(amount_spaces));
+                response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what(), 1).dump(amount_spaces));
+                response.code = 500;
+            }
+
+            response.set_header("Content-Type", "application/json");
+            return response;
+            }
+        );
+
+
+        CROW_ROUTE(m_app, "/phi/drawB19").methods("POST"_method)([&](const crow::request& req) {
+
+            std::string avatar_base64{};
+            crow::response response;
+            response.add_header("Cache-Control", "no-cache");
+            response.add_header("Pragma", "no-cache");
+            try {
+                Json jsonData{ json::parse(req.body) };
+
+                std::exchange(jsonData, jsonData[0]);
+
+                if (jsonData.contains("avatar_base64")) {
+                    avatar_base64 = jsonData["avatar_base64"].get<std::string>();
+                }
+                
+                std::string
+                    authorization{ req.get_header_value("Authorization") },
+                    sessionToken{ req.get_header_value("SessionToken") };
+
+                LogSystem::logInfo(std::format("[Phigros]绘制玩家Best 19 ------ SessionToken:{}", sessionToken));
+
+                cv::Mat result{ m_phigros_service->drawB19(authorization, sessionToken, avatar_base64) };
+                std::vector<uchar> data;
+                cv::imencode(".png", result, data);
+                result.release();
+                std::string imgStr(data.begin(), data.end());
+
+                response.set_header("Content-Type", "image/png");
+                response.write(imgStr);
+                return response;
+            }
+            catch (const self::HTTPException& e) {
+                response.write(StatusCodeHandle::getSimpleJsonResult(e.getCode(), e.getMessage(), e.getStatus()).dump(amount_spaces));
+                LogSystem::logError(std::format("[Phigros]绘制玩家Best 19 ------ msg: {} / code: {} / status: {}", e.what(), e.getCode(), e.getStatus()));
+                response.code = e.getCode();
+            }
+            catch (const self::TimeoutException& e) {
+                LogSystem::logError("[Phigros]绘制玩家Best 19 ------ API请求超时");
+                response.write(StatusCodeHandle::getSimpleJsonResult(408, "Data API request timeout", 2).dump(amount_spaces));
+                response.code = 408;
+            }
+            catch (const std::runtime_error& e) {
+                LogSystem::logError(std::format("[Phigros]绘制玩家Best 19 ------ msg: {} / code: {}", e.what(), 500));
+                response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what(), 1).dump(amount_spaces));
+                response.code = 500;
+            }
+            catch (const std::exception& e) {
+                LogSystem::logError(std::format("[Phigros]绘制玩家Best 19 ------ msg: {} / code: {}", e.what(), 500));
+                response.write(StatusCodeHandle::getSimpleJsonResult(500, e.what(), 1).dump(amount_spaces));
                 response.code = 500;
             }
 
