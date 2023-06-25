@@ -162,6 +162,15 @@ public:
         return data;
     }
 
+    // 16进制调试工具
+    static inline void HexDebug(const auto& content) {
+        for (const auto& data : content)
+        {
+            std::cout << std::format("{:02X}", data);
+        };
+        std::cout << std::endl;
+    }
+
     // 懒人自用输入输出
     template<typename... Tn>
     inline static void Print(const Tn&... args) {
