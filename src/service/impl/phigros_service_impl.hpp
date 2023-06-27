@@ -1819,7 +1819,7 @@ public:
 
 		// record
 		{
-			freetype2->putText(result, "\\       EZ    HD    IN    AT", cv::Point(150, 635), 22, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+			freetype2->putText(result, "\\        EZ   HD    IN    AT", cv::Point(151, 633), 22, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
 			freetype2->putText(result, "Cleared", cv::Point(119, 679), 18, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
 			freetype2->putText(result, "FC", cv::Point(108, 719), 18, cv::Scalar(255, 149, 82), -1, cv::LINE_AA, false); //BGR
 			freetype2->putText(result, "Phi", cv::Point(97, 759), 18, cv::Scalar(95, 255, 255), -1, cv::LINE_AA, false);
