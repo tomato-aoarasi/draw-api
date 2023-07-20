@@ -475,7 +475,7 @@ public:
 
 	// string_view yuhao_token临时测试玩家名称
 	inline cv::Mat drawPlayerSingleInfo(std::string_view song_id, Ubyte level,
-		std::string_view auth_token, std::string_view player_session_token, std::string_view avatar_base64) override {
+		std::string_view auth_token, std::string_view player_session_token, std::string_view avatar_base64, bool is_game_avatar) override {
 		constexpr std::chrono::milliseconds timeout{ 2000ms };
 		Json dataId{}, songData{}, playerData{};
 		//获取API数据到曲目data
@@ -760,8 +760,26 @@ public:
 				offset_h{ 34 };// 120 * tan15.9 = 34//向下取整
 
 			//cv::Mat playerHead{ cv::imread("draw/test.png", cv::IMREAD_UNCHANGED) };
-			cv::Mat playerHead{ !avatar_base64.empty() ? base64ToMat(avatar_base64.data()) : cv::imread("draw/phi/UnknowAvatar.png", cv::IMREAD_UNCHANGED) },
+			cv::Mat playerHead,
 				playerHeadBox(h, 166, CV_8UC4, cv::Scalar(0, 0, 0, 0));
+
+			const bool avatarHasEnable{ playerData.at("other").at("avatarHasEnable").get<bool>() };
+
+			//cv::Mat playerHead{ cv::imread("draw/test.png", cv::IMREAD_UNCHANGED) };
+			if (is_game_avatar) {
+				playerHead = avatarHasEnable
+					?
+					cv::imread(Global::PhiResourcePath + playerData.at("other").at("avatarPath").get<std::string>(), cv::IMREAD_UNCHANGED)
+					:
+					cv::imread("draw/phi/UnknowAvatar.png", cv::IMREAD_UNCHANGED);
+			}
+			else {
+				playerHead = !avatar_base64.empty()
+					?
+					base64ToMat(avatar_base64.data())
+					:
+					cv::imread("draw/phi/UnknowAvatar.png", cv::IMREAD_UNCHANGED);
+			}
 
 			resize(playerHead, playerHead, cv::Size(150, 150));
 
@@ -884,7 +902,7 @@ public:
 	}
 
 	inline cv::Mat drawPlayerSingleInfoModernStyle(std::string_view song_id, Ubyte level,
-		std::string_view auth_token, std::string_view player_session_token, std::string_view avatar_base64) override {
+		std::string_view auth_token, std::string_view player_session_token, std::string_view avatar_base64, bool is_game_avatar) override {
 		Json api_data{};
 		
 		// ======================================
@@ -1067,9 +1085,27 @@ public:
 				h{ 120 },
 				offset_h{ 34 };// 120 * tan15.9 = 34//向下取整
 
-			//cv::Mat playerHead{ cv::imread("draw/test.png", cv::IMREAD_UNCHANGED) };
-			cv::Mat playerHead{ !avatar_base64.empty() ? base64ToMat(avatar_base64.data()) : cv::imread("draw/phi/UnknowAvatar.png", cv::IMREAD_UNCHANGED) },
+			cv::Mat playerHead,
 				playerHeadBox(h, 166, CV_8UC4, cv::Scalar(0, 0, 0, 0));
+
+			const bool avatarHasEnable{ api_data.at("other").at("avatarHasEnable").get<bool>() };
+
+			//cv::Mat playerHead{ cv::imread("draw/test.png", cv::IMREAD_UNCHANGED) };
+			if (is_game_avatar) {
+				playerHead = avatarHasEnable
+					? 
+					cv::imread(Global::PhiResourcePath + api_data.at("other").at("avatarPath").get<std::string>(), cv::IMREAD_UNCHANGED)
+					: 
+					cv::imread("draw/phi/UnknowAvatar.png", cv::IMREAD_UNCHANGED);
+			}
+			else {
+				playerHead = !avatar_base64.empty()
+					? 
+					base64ToMat(avatar_base64.data())
+					: 
+					cv::imread("draw/phi/UnknowAvatar.png", cv::IMREAD_UNCHANGED);
+			}
+
 
 			cv::resize(playerHead, playerHead, cv::Size(150, 150));
 
@@ -1283,7 +1319,7 @@ public:
 		return result;
 	}
 
-	inline cv::Mat drawB19(std::string_view auth_token, std::string_view  player_session_token, std::string_view avatar_base64) override {
+	inline cv::Mat drawB19(std::string_view auth_token, std::string_view  player_session_token, std::string_view avatar_base64, bool is_game_avatar) override {
 		Json api_data{};
 		
 		// ======================================
@@ -1430,11 +1466,31 @@ public:
 			playerForm.release();
 		}
 
-		// 玩家头像
 		{
 			constexpr const int h{ 108 };
 
-			cv::Mat player_avatar{ !avatar_base64.empty() ? base64ToMat(avatar_base64.data()) : cv::imread("draw/phi/UnknowAvatar.png", cv::IMREAD_UNCHANGED) };
+			// cv::Mat player_avatar{ !avatar_base64.empty() ? base64ToMat(avatar_base64.data()) : cv::imread("draw/phi/UnknowAvatar.png", cv::IMREAD_UNCHANGED) };
+
+			// ========================
+			cv::Mat player_avatar;
+
+			const bool avatarHasEnable{ api_data.at("other").at("avatarHasEnable").get<bool>() };
+
+			if (is_game_avatar) {
+				player_avatar = avatarHasEnable
+					?
+					cv::imread(Global::PhiResourcePath + api_data.at("other").at("avatarPath").get<std::string>(), cv::IMREAD_UNCHANGED)
+					:
+					cv::imread("draw/phi/UnknowAvatar.png", cv::IMREAD_UNCHANGED);
+			}
+			else {
+				player_avatar = !avatar_base64.empty()
+					?
+					base64ToMat(avatar_base64.data())
+					:
+					cv::imread("draw/phi/UnknowAvatar.png", cv::IMREAD_UNCHANGED);
+			}
+			// ========================
 
 			cv::resize(player_avatar, player_avatar, cv::Size(135, 135));
 

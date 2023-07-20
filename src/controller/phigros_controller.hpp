@@ -103,6 +103,7 @@ public:
         CROW_ROUTE(m_app, "/phi/drawSingle").methods("POST"_method)([&](const crow::request& req) {
 
             std::string song_id{}, avatar_base64{};
+            bool is_game_avatar{ false };
             /* EZ:0, HD:1, IN:2, AT:3, Auto: 4 */
             Ubyte level{ 4 };
             uint8_t style { 1 };
@@ -138,6 +139,10 @@ public:
                 if (jsonData.contains("style")) {
                     style = jsonData["style"].get<uint8_t>();
                 }
+                if (jsonData.contains("is_game_avatar")) {
+                    LogSystem::logInfo("[Phigros]绘制玩家BEST ------ 游戏内头像");
+                    is_game_avatar = jsonData["is_game_avatar"].get<bool>();
+                }
 
                 std::string
                     authorization{ req.get_header_value("Authorization") },
@@ -150,11 +155,11 @@ public:
                 {
                 case 0:
                     LogSystem::logInfo("[Phigros]绘制玩家BEST ------ 风格样式0(OLD)");
-                    result = m_phigros_service->drawPlayerSingleInfo(song_id, level, authorization, sessionToken, avatar_base64);
+                    result = m_phigros_service->drawPlayerSingleInfo(song_id, level, authorization, sessionToken, avatar_base64, is_game_avatar);
                     break;
                 case 1:
                     LogSystem::logInfo("[Phigros]绘制玩家BEST ------ 风格样式1(NEW)");
-                    result = m_phigros_service->drawPlayerSingleInfoModernStyle(song_id, level, authorization, sessionToken, avatar_base64);
+                    result = m_phigros_service->drawPlayerSingleInfoModernStyle(song_id, level, authorization, sessionToken, avatar_base64, is_game_avatar);
                     break;
                 default:
                     throw self::HTTPException("Style does not exist.", 400);
@@ -199,6 +204,7 @@ public:
         CROW_ROUTE(m_app, "/phi/drawB19").methods("POST"_method)([&](const crow::request& req) {
 
             std::string avatar_base64{};
+            bool is_game_avatar{ false };
             crow::response response;
             response.add_header("Cache-Control", "no-cache");
             response.add_header("Pragma", "no-cache");
@@ -210,6 +216,10 @@ public:
                 if (jsonData.contains("avatar_base64")) {
                     avatar_base64 = jsonData["avatar_base64"].get<std::string>();
                 }
+                if (jsonData.contains("is_game_avatar")) {
+                    LogSystem::logInfo("[Phigros]绘制玩家Best 19 ------ 游戏内头像");
+                    is_game_avatar = jsonData["is_game_avatar"].get<bool>();
+                }
                 
                 std::string
                     authorization{ req.get_header_value("Authorization") },
@@ -217,7 +227,7 @@ public:
 
                 LogSystem::logInfo(std::format("[Phigros]绘制玩家Best 19 ------ SessionToken:{}", sessionToken));
 
-                cv::Mat result{ m_phigros_service->drawB19(authorization, sessionToken, avatar_base64) };
+                cv::Mat result{ m_phigros_service->drawB19(authorization, sessionToken, avatar_base64, is_game_avatar) };
                 std::vector<uchar> data;
                 cv::imencode(".png", result, data);
                 result.release();

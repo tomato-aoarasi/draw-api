@@ -20,9 +20,9 @@ public:
 	virtual ~PhigrosService() = default;
 	virtual cv::Mat drawSongInfomation(int,bool,std::string_view) = 0;
 	// 曲目id,YuhaoToken,SessionToken
-	virtual cv::Mat drawPlayerSingleInfo(std::string_view, Ubyte, std::string_view, std::string_view, std::string_view) = 0;
-	virtual cv::Mat drawPlayerSingleInfoModernStyle(std::string_view, Ubyte, std::string_view, std::string_view, std::string_view) = 0;
-	virtual cv::Mat drawB19(std::string_view, std::string_view , std::string_view) = 0;
+	virtual cv::Mat drawPlayerSingleInfo(std::string_view, Ubyte, std::string_view, std::string_view, std::string_view, bool) = 0;
+	virtual cv::Mat drawPlayerSingleInfoModernStyle(std::string_view, Ubyte, std::string_view, std::string_view, std::string_view, bool) = 0;
+	virtual cv::Mat drawB19(std::string_view, std::string_view , std::string_view, bool) = 0;
 private:
 };
 

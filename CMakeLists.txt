@@ -141,7 +141,7 @@ file(COPY ${allCopyFiles} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
 target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS} ${OPENSSL_LIBRARIES} ${QRENCODE_LIBRARY_RELEASE} 
 ${SQLITE_MODERN_CPP_INCLUDE_DIRS}
-Crow::Crow cpprestsdk::cpprest hiredis OpenGL::OpenGL GLU GLUT::GLUT Freetype::Freetype hiredis
+Crow::Crow cpprestsdk::cpprest OpenGL::OpenGL GLU GLUT::GLUT Freetype::Freetype hiredis
 nlohmann_json::nlohmann_json fmt::fmt sqlite3 unofficial::sqlite3::sqlite3 yaml-cpp Boost::coroutine
 spdlog::spdlog #libgo::libgo
 libbcrypt.a libSQLitePP.a)
