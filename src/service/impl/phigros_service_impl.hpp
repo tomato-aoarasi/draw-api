@@ -1033,7 +1033,7 @@ public:
 				h{ 88 },
 				offset_h{ 25 }, max_size_framewk{ 1700 };// 88 * tan15.9 = 25
 
-			freetype2->loadFontData("draw/phi/font/SourceHanSansCN_SairaCondensed_Hybrid_Medium.ttf", 0);
+			freetype2->loadFontData("draw/phi/font/SourceHanSansCN-Medium-90Y.ttf", 0);
 			// + 292
 			int offset_w{ 292 + freetype2->getTextSize(playerName, 48, -1, nullptr).width };
 
@@ -1306,7 +1306,7 @@ public:
 		freetype2->putText(result, OtherUtil::digitSupplementHandle(playerSocre), cv::Point(256, 538) + cv::Point(3, 2), 84, cv::Scalar(67, 67, 67), -1, cv::LINE_AA, false);
 		freetype2->putText(result, OtherUtil::digitSupplementHandle(playerSocre), cv::Point(256, 538), 84, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
 
-		freetype2->loadFontData("draw/phi/font/SourceHanSansCN_SairaCondensed_Hybrid_Medium.ttf", 0);
+		freetype2->loadFontData("draw/phi/font/SourceHanSansCN-Medium-90Y.ttf", 0);
 
 		// player name
 		freetype2->putText(result, playerName, cv::Point(player_form_offset_x + 52, 107), 48, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
