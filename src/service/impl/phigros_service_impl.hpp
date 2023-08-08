@@ -33,6 +33,8 @@
 #include <opencv2/freetype.hpp>
 #include <ft2build.h>
 #include <common/utils/draw_tool.hpp>
+#include <cpprest/http_client.h>
+#include <cpprest/json.h>
 
 #include FT_FREETYPE_H
 #define CPPHTTPLIB_OPENSSL_SUPPORT
@@ -48,6 +50,14 @@ using namespace std::chrono_literals;
 
 class PhigrosServiceImpl : public PhigrosService {
 private:
+	// 字体定义
+	inline static const std::string
+		sairaHybridRegularHot{ "draw/phi/font/SourceHanSans_SairaHybridRegularHot.ttf" }, 
+		adobeStdR{ "draw/phi/font/AdobeStdR.otf" },
+		sairaCondensedHybridMedium{"draw/phi/font/SourceHanSansCN_SairaCondensed_Hybrid_Medium.ttf"},
+		playoffProCond { "draw/phi/font/PlayoffProCond.ttf" },
+		SourceHanSansCNMedium90Y { "draw/phi/font/SourceHanSansCN-Medium-90Y.ttf" };
+
 	inline static cv::Mat
 		phigros{ cv::imread("draw/phi/Phigros.png", cv::IMREAD_UNCHANGED) },
 		shadow{ cv::imread("draw/phi/Shadow.png", cv::IMREAD_UNCHANGED) },
@@ -58,9 +68,13 @@ private:
 		b19_record1{ cv::imread("draw/phi/record1.png",cv::IMREAD_UNCHANGED) },
 		b19_record_sign{ cv::imread("draw/phi/record_sign.png",cv::IMREAD_UNCHANGED) },
 		b19_shadow{ cv::Mat(cv::Size(345, 189), CV_8UC4) },
+		info_style2_shadow{ cv::Mat(cv::Size(2048, 1080), CV_8UC4) },
 		unknow { cv::imread("draw/phi/Unknow.png",cv::IMREAD_UNCHANGED) },
 		overflow { cv::imread("draw/phi/overflow.png",cv::IMREAD_UNCHANGED) },
-		b19_background{ cv::imread("draw/phi/background_p.png",cv::IMREAD_UNCHANGED) };
+		b19_background{ cv::imread("draw/phi/background_p.png",cv::IMREAD_UNCHANGED) },
+		collect_box{ cv::imread("draw/phi/collect_box.png",cv::IMREAD_UNCHANGED) },
+		collect_sign{ cv::imread("draw/phi/button/收集品icon.png",cv::IMREAD_UNCHANGED) },
+		info_modern_form_style2{ cv::imread("draw/phi/info_modern_form_style2.png",cv::IMREAD_UNCHANGED) };
 	// base64解码为cv::Mat
 	cv::Mat base64ToMat(const std::string& base64Str) {
 		// 将base64字符串转换为字节数组
@@ -72,9 +86,11 @@ private:
 		if (img.empty()) {
 			img.release();
 			return cv::imread("draw/phi/UnknowAvatar.png", cv::IMREAD_UNCHANGED);
-		}else if (img.type() == 0){
+		}
+		else if (img.type() == 0) {
 			cv::cvtColor(img, img, cv::COLOR_GRAY2BGR);
-		}else if (img.type() == 24) {
+		}
+		else if (img.type() == 24) {
 			return std::move(img);
 		}
 		std::vector<cv::Mat> mv;
@@ -89,7 +105,7 @@ private:
 		//std::cout << dst.type() << std::endl;
 
 		return std::move(dst);
-	}
+	};
 public:
 	~PhigrosServiceImpl() {
 		phigros.release();
@@ -104,6 +120,10 @@ public:
 		b19_background.release();
 		unknow.release();
 		overflow.release();
+		collect_box.release();
+		info_modern_form_style2.release();
+		info_style2_shadow.release();
+		collect_sign.release();
 	};
 
 	PhigrosServiceImpl() {
@@ -130,20 +150,61 @@ public:
 			b19_shadow.copyTo(this->b19_shadow);
 			b19_shadow.release();
 		}
+		{
+			cv::Mat info_style2_shadow(this->info_style2_shadow.size(), CV_8UC4, cv::Scalar(0, 0, 0, 0));
+			// 定义渐变的起始和结束颜色
+			cv::Scalar startColor(0, 0, 0, 0);
+			cv::Scalar endColor(0, 0, 0, 204);
+
+			constexpr const double init_pos_ratio{ 0.8 };
+			for (int y{ (int)(info_style2_shadow.rows * init_pos_ratio) }; y < info_style2_shadow.rows; y++)
+			{
+				double ratio{ ((double)y - info_style2_shadow.rows * init_pos_ratio) / (info_style2_shadow.rows - info_style2_shadow.rows * init_pos_ratio) };
+				// 计算当前行的颜色
+				cv::Scalar color{ startColor * (1 - ratio) + endColor * (ratio) };
+
+				// std::cout << color << std::endl;
+
+				// 绘制矩形
+				cv::rectangle(info_style2_shadow, cv::Point(0, y), cv::Point(info_style2_shadow.cols, y), color, -1, cv::LINE_AA);
+			}
+			info_style2_shadow.copyTo(this->info_style2_shadow);
+			info_style2_shadow.release();
+		}
 	};
 
-	inline cv::Mat drawSongInfomation(int song_id, bool isQRCode, std::string_view QRCodeContent) override {
-		//设置超过200ms后API请求超时
-		constexpr std::chrono::milliseconds timeout{ 2000ms };
+	inline cv::Mat drawSongInfomation(Json info_param, bool isQRCode, std::string_view QRCodeContent, const std::string& authorization) override {
+		constexpr std::chrono::seconds timeout{ 30s }; // 设置超时时间为 20 秒
 		constexpr const size_t size_w{ 2048 }, size_h{ 1080 };
 
 		Json data;
 
-		//获取API数据到data
-		OtherUtil::asyncGetAPI(data, timeout, Global::BingAPI, Global::PhiUri + "?id="s + std::to_string(song_id));
-		std::exchange(data, data[0]);
+		web::http::client::http_client_config config;
+		config.set_timeout(timeout);
 
-		std::string illustrationPath{ Global::PhiResourcePath + data["song_illustration_url"].get<std::string>() };
+		web::http::client::http_client client(U(Global::PhiAPI), config);
+		// 创建第一个HTTP请求, 添加匹配索引
+		web::http::http_request request_add_index(web::http::methods::POST);
+		request_add_index.set_request_uri("/phi/song"s);
+		request_add_index.headers().add("Content-Type", "application/json");
+		request_add_index.headers().add("Authorization", "Bearer "s + authorization);
+		request_add_index.set_body(web::json::value::parse(info_param.dump()));
+
+		auto response = client.request(request_add_index).get();
+
+		{
+			auto status_code{ response.status_code() };
+			if (status_code >= 300 or status_code < 200) {
+				data = Json::parse(response.extract_json().get().serialize());
+				std::string msg{ (data.count("detail") ? data.at("detail").get<std::string>() : "") };
+				uint16_t status{ data.at("status").get<uint16_t>() };
+				throw self::HTTPException(msg, status_code, status);
+			}
+		}
+
+		data = Json::parse(response.extract_json().get().serialize());
+
+		std::string illustrationPath{ Global::PhiResourcePath + data["illustrationPath"].get<std::string>() };
 
 
 		// 读取素材
@@ -158,67 +219,25 @@ public:
 		std::unordered_map<std::string, std::string> diffText;
 		std::vector<decltype(diffText)> diffTexts;
 
-		if (!data["design"]["ez"].is_null()) {
-			diff.emplace_back(cv::imread("draw/phi/diff/EZ.png", cv::IMREAD_UNCHANGED));
-			diffSign.emplace_back(cv::imread("draw/phi/diff/DiifFont/EZ.png", cv::IMREAD_UNCHANGED));
+		{
+			std::array<std::string, 6>difficulties{ "ez", "hd", "in", "at", "lg", "sp" };
 
-			diffText["rating"] = OtherUtil::retainDecimalPlaces(data["rating"]["ez"].get<float>(), 1);
-			diffText["note"] = std::to_string(data["note"]["ez"].get<int>());
-			diffText["design"] = data["design"]["ez"].get<std::string>();
+			for (auto& difficulty : difficulties) {
+				if (data["flag"][difficulty].get<bool>()) {
+					auto rating{ OtherUtil::retainDecimalPlaces(data["content"][difficulty]["rating"].get<float>(), 1) };
 
-			diffTexts.emplace_back(diffText);
+					diffText["rating"] = rating == "-1.0"s ? "  ?"s : rating;
+					diffText["note"] = std::to_string(data["content"][difficulty]["note"].get<int>());
+					diffText["design"] = data["content"][difficulty]["design"].get<std::string>();
+
+					std::transform(difficulty.begin(), difficulty.end(), difficulty.begin(), ::toupper);
+					diff.emplace_back(cv::imread("draw/phi/diff/"s + difficulty + ".png"s, cv::IMREAD_UNCHANGED));
+					diffSign.emplace_back(cv::imread("draw/phi/diff/DiifFont/"s + difficulty + ".png"s, cv::IMREAD_UNCHANGED));
+					diffTexts.emplace_back(diffText);
+				}
+			}
 		}
-		if (!data["design"]["hd"].is_null()) {
-			diff.emplace_back(cv::imread("draw/phi/diff/HD.png", cv::IMREAD_UNCHANGED));
-			diffSign.emplace_back(cv::imread("draw/phi/diff/DiifFont/HD.png", cv::IMREAD_UNCHANGED));
 
-			diffText["rating"] = OtherUtil::retainDecimalPlaces(data["rating"]["hd"].get<float>(), 1);
-			diffText["note"] = std::to_string(data["note"]["hd"].get<int>());
-			diffText["design"] = data["design"]["hd"].get<std::string>();
-
-			diffTexts.emplace_back(diffText);
-		}
-		if (!data["design"]["in"].is_null()) {
-			diff.emplace_back(cv::imread("draw/phi/diff/IN.png", cv::IMREAD_UNCHANGED));
-			diffSign.emplace_back(cv::imread("draw/phi/diff/DiifFont/IN.png", cv::IMREAD_UNCHANGED));
-
-			diffText["rating"] = OtherUtil::retainDecimalPlaces(data["rating"]["in"].get<float>(), 1);
-			diffText["note"] = std::to_string(data["note"]["in"].get<int>());
-			diffText["design"] = data["design"]["in"].get<std::string>();
-
-			diffTexts.emplace_back(diffText);
-		}
-		if (!data["design"]["at"].is_null()) {
-			diff.emplace_back(cv::imread("draw/phi/diff/AT.png", cv::IMREAD_UNCHANGED));
-			diffSign.emplace_back(cv::imread("draw/phi/diff/DiifFont/AT.png", cv::IMREAD_UNCHANGED));
-
-			diffText["rating"] = OtherUtil::retainDecimalPlaces(data["rating"]["at"].get<float>(), 1);
-			diffText["note"] = std::to_string(data["note"]["at"].get<int>());
-			diffText["design"] = data["design"]["at"].get<std::string>();
-
-			diffTexts.emplace_back(diffText);
-		}
-		if (!data["design"]["lg"].is_null()) {
-			diff.emplace_back(cv::imread("draw/phi/diff/LG.png", cv::IMREAD_UNCHANGED));
-			diffSign.emplace_back(cv::imread("draw/phi/diff/DiifFont/LG.png", cv::IMREAD_UNCHANGED));
-
-			diffText["rating"] = OtherUtil::retainDecimalPlaces(data["rating"]["lg"].get<float>(), 1);
-			diffText["note"] = std::to_string(data["note"]["lg"].get<int>());
-			diffText["design"] = data["design"]["lg"].get<std::string>();
-
-			diffTexts.emplace_back(diffText);
-		}
-		if (!data["design"]["sp"].is_null()) {
-			diff.emplace_back(cv::imread("draw/phi/diff/SP.png", cv::IMREAD_UNCHANGED));
-			diffSign.emplace_back(cv::imread("draw/phi/diff/DiifFont/SP.png", cv::IMREAD_UNCHANGED));
-
-			std::string rating{ OtherUtil::retainDecimalPlaces(data["rating"]["sp"].get<float>(),1) };
-			diffText["rating"] = rating == "-1.0"s ? "  ?"s : rating;
-			diffText["note"] = std::to_string(data["note"]["sp"].get<int>());
-			diffText["design"] = data["design"]["sp"].get<std::string>();
-
-			diffTexts.emplace_back(diffText);
-		}
 		size_t diffCount{ diff.size() };
 
 		// 设置高斯模糊
@@ -348,7 +367,7 @@ public:
 		cv::Ptr<freetype::FreeType2> freetype2;
 
 		freetype2 = cv::freetype::createFreeType2();
-		freetype2->loadFontData("draw/phi/font/SourceHanSans_SairaHybridRegularHot.ttf", 0);
+		freetype2->loadFontData(this->sairaHybridRegularHot, 0);
 
 		//freetype(freetype2);
 
@@ -359,7 +378,7 @@ public:
 			illustration{ "Illustration:  "s + data["illustration"].get<std::string>() },
 			duration{ "Duration:  "s + data["duration"].get<std::string>() },
 			bpm{ "BPM:  "s + data["bpm"].get<std::string>() },
-			title{ data["song_name"].get<std::string>() };
+			title{ data["title"].get<std::string>() };
 
 		freetype2->putText(result, chapter, Point(285, 75) + cv::Point(4, 4), 42, Scalar(80, 80, 80, 40), -1, cv::LINE_AA, true);
 		freetype2->putText(result, chapter, Point(285, 75), 42, Scalar(189, 189, 189), -1, cv::LINE_AA, true);
@@ -461,7 +480,7 @@ public:
 			}
 		};
 
-		freetype2->loadFontData("draw/phi/font/AdobeStdR.otf", 0);
+		freetype2->loadFontData(this->adobeStdR, 0);
 
 		freetype2->putText(result, "Generated by tomato Team - Phigros", cv::Point(18, 1070) + cv::Point(3, 2), 25, cv::Scalar(5, 5, 5), -1, cv::LINE_AA, true);
 		freetype2->putText(result, "Generated by tomato Team - Phigros", cv::Point(18, 1070), 25, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
@@ -473,94 +492,44 @@ public:
 
 	};
 
-	// string_view yuhao_token临时测试玩家名称
 	inline cv::Mat drawPlayerSingleInfo(std::string_view song_id, Ubyte level,
 		std::string_view auth_token, std::string_view player_session_token, std::string_view avatar_base64, bool is_game_avatar) override {
-		constexpr std::chrono::milliseconds timeout{ 2000ms };
-		Json dataId{}, songData{}, playerData{};
-		//获取API数据到曲目data
-		OtherUtil::asyncGetAPI(songData, timeout, Global::BingAPI, Global::PhiUri + "?id="s + song_id.data());
-		std::exchange(songData, songData[0]);
-		std::string illustrationPath{ Global::PhiResourcePath + songData["song_illustration_url"].get<std::string>() };
+		constexpr std::chrono::seconds timeout{ 30s };
+		//Json dataId{}, songData{}, playerData{};
+		Json data{};
 
-		bool flag{ false };
-		self::HTTPException httpexception;
+		web::http::client::http_client_config config;
+		config.set_timeout(timeout);
 
-		std::thread apiDataGet([&] {
-			try {
+		web::http::client::http_client client(U(Global::PhiAPI), config);
 
-				constexpr std::chrono::seconds playerTimeout{ 30s };
-				//获取API数据到对应id
-				/*
-				OtherUtil::asyncGetAPI(dataId, timeout, Global::BingAPI, "/api/pgr/findYuhao7370Id?id="s + song_id.data());
+		web::uri_builder builder(U("/phi/best"));
+		// 参数添加
+		builder.append_query(U("songid"), U(song_id.data()));
 
+		// 创建第一个HTTP请求, 添加匹配索引
+		web::http::http_request request_add_index(web::http::methods::GET);
+		request_add_index.set_request_uri(builder.to_string());
+		request_add_index.headers().add("Content-Type", "application/json");
+		request_add_index.headers().add("Authorization", "Bearer "s + auth_token.data());
+		request_add_index.headers().add("SessionToken", player_session_token.data());
 
-				if (dataId["yuhao7370_song_id"].is_null()) {
-					httpexception = self::HTTPException("yuhao7370_song_id is null");
-					flag = true;
-					return;
-				}
-				std::string yuhao7370id{ dataId["yuhao7370_song_id"].get<std::string>() };
-				*/
-				// POST请求测试
-				// 创建HTTP客户端
-				httplib::Client client(Global::PhiPlayDataAPI, 8299);
+		auto response = client.request(request_add_index).get();
 
-				// 创建Authorization头部
-				std::string auth_header = "Bearer "s + auth_token.data();
-
-				// 创建Get请求
-				httplib::Headers headers = {
-					{"Authorization", auth_header},
-					{"SessionToken", player_session_token.data()},
-				};
-
-				// =================================================
-
-				std::future<Json> future{ std::async(std::launch::async,[&]()->Json {
-					httplib::Result res { client.Get("/proxy/phi/best?songid="s + song_id.data() + "&level="s + std::to_string(level), headers)};
-					// 到时候加一个超时
-					if (res && res->status == 200) return json::parse(res->body);
-
-					auto err{ res.error() };
-					if (err != httplib::Error::Success)
-					{
-						httpexception = self::HTTPException(httplib::to_string(err), 500, 1);
-						flag = true;
-						return Json();
-					}
-
-					try {
-						httpexception = self::HTTPException(json::parse(res->body).at("detail").get<std::string>(),res->status, json::parse(res->body).at("status").get<uint16_t>());
-						flag = true;
-						return Json();
-					}
-					catch (...) {
-						httpexception = self::HTTPException("", res->status, 1);
-						flag = true;
-						return Json();
-					}
-				}
-
-				) };
-				// --------------------
-				std::future_status status{ future.wait_for(playerTimeout) };
-
-				if (status == std::future_status::timeout) {
-					httpexception = self::HTTPException("请求超时", 408, 2);
-					flag = true;
-					return;
-				}
-				playerData = future.get();
+		{
+			auto status_code{ response.status_code() };
+			if (status_code >= 300 or status_code < 200) {
+				data = Json::parse(response.extract_json().get().serialize());
+				std::string msg{ (data.count("detail") ? data.at("detail").get<std::string>() : "") };
+				uint16_t status{ data.at("status").get<uint16_t>() };
+				throw self::HTTPException(msg, status_code, status);
 			}
-			catch (const std::runtime_error& e) {
-				httpexception = self::HTTPException(e.what(), 1);
-			}
-			// =================================================
-			});;
+		}
 
+		data = Json::parse(response.extract_json().get().serialize());
 
-		// =============================
+		std::string illustrationPath{ Global::PhiResourcePath + data["content"]["record"]["illustrationPath"].get<std::string>()};
+
 		constexpr const size_t size_w{ 2048 }, size_h{ 1080 };
 		cv::Mat illustration{ cv::imread(std::move(illustrationPath),cv::IMREAD_UNCHANGED) };
 		cv::resize(illustration, illustration, cv::Size(size_w, size_h));
@@ -655,24 +624,16 @@ public:
 
 
 		cv::Ptr<freetype::FreeType2> freetype2{ cv::freetype::createFreeType2() };
-		freetype2->loadFontData("draw/phi/font/SourceHanSansCN_SairaCondensed_Hybrid_Medium.ttf", 0);
+		freetype2->loadFontData(this->SourceHanSansCNMedium90Y, 0);
 
-		// 在这堵塞(能快一秒是一秒)
-		apiDataGet.join();
-		if (flag) {
-			illustration.release();
-			img.release();
-			rate.release();
-			throw httpexception;
-		}
-		std::exchange(playerData, playerData["content"]);
+		std::exchange(data, data["content"]);
 
 		std::string
-			playerName{ playerData["playerNickname"].get<std::string>() },
-			playerRKS{ OtherUtil::retainDecimalPlaces(playerData["rankingScore"].get<float>()) };
-		int playerSocre{ playerData["record"]["score"].get<int>() },
-			playerCourseRanking{ playerData["challengeModeRank"].get<int>() };
-		bool playerIsFC{ playerData["record"]["isfc"].get<bool>() };
+			playerName{ data["playerNickname"].get<std::string>() },
+			playerRKS{ OtherUtil::retainDecimalPlaces(data["rankingScore"].get<float>()) };
+		int playerSocre{ data["record"]["score"].get<int>() },
+			playerCourseRanking{ data["challengeModeRank"].get<int>() };
+		bool playerIsFC{ data["record"]["isfc"].get<bool>() };
 
 		if (playerSocre >= 1000000) {
 			rate = cv::imread("draw/phi/rating/uniformSize/phi_old.png", cv::IMREAD_UNCHANGED);
@@ -763,13 +724,13 @@ public:
 			cv::Mat playerHead,
 				playerHeadBox(h, 166, CV_8UC4, cv::Scalar(0, 0, 0, 0));
 
-			const bool avatarHasEnable{ playerData.at("other").at("avatarHasEnable").get<bool>() };
+			const bool avatarHasEnable{ data.at("other").at("avatarHasEnable").get<bool>() };
 
 			//cv::Mat playerHead{ cv::imread("draw/test.png", cv::IMREAD_UNCHANGED) };
 			if (is_game_avatar) {
 				playerHead = avatarHasEnable
 					?
-					cv::imread(Global::PhiResourcePath + playerData.at("other").at("avatarPath").get<std::string>(), cv::IMREAD_UNCHANGED)
+					cv::imread(Global::PhiResourcePath + data.at("other").at("avatarPath").get<std::string>(), cv::IMREAD_UNCHANGED)
 					:
 					cv::imread("draw/phi/UnknowAvatar.png", cv::IMREAD_UNCHANGED);
 			}
@@ -850,21 +811,21 @@ public:
 		int from_to[] = { 0,0, 1,1, 2,2 };
 		mixChannels(&img, 1, &result, 1, from_to, 3);
 
+		illustration.release();
+		img.release();
+		rate.release();
 		img.release();
 
+		freetype2->loadFontData(this->SourceHanSansCNMedium90Y, 0);
 
-
-
-		freetype2->loadFontData("draw/phi/font/PlayoffProCond.ttf", 0);
-
-		std::string songRating{ playerData["record"]["difficulty"].get<std::string>() + ": "s + OtherUtil::retainDecimalPlaces(playerData["record"]["rating"].get<float>(),1) };
+		std::string songRating{ data["record"]["difficulty"].get<std::string>() + ": "s + OtherUtil::retainDecimalPlaces(data["record"]["rating"].get<float>(),1) };
 
 		freetype2->putText(result, songRating, cv::Point(117, 357) + cv::Point(5, 3), 56, cv::Scalar(5, 5, 5), -1, cv::LINE_AA, true);
 		freetype2->putText(result, songRating, cv::Point(117, 357), 56, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
 
-		freetype2->putText(result, OtherUtil::digitSupplementHandle(playerSocre), cv::Point(238, 970), 84, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
-		freetype2->putText(result, "Rate: "s + OtherUtil::retainDecimalPlaces(playerData["record"]["rks"].get<float>()), cv::Point(584, 937), 40, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
-		freetype2->putText(result, "Acc: "s + OtherUtil::retainDecimalPlaces(playerData["record"]["acc"].get<float>()) + "%"s, cv::Point(579, 975), 32, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+		freetype2->putText(result, OtherUtil::digitSupplementHandle(playerSocre), cv::Point(246, 970), 96, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+		freetype2->putText(result, "Rate: "s + OtherUtil::retainDecimalPlaces(data["record"]["rks"].get<float>()), cv::Point(584, 937), 40, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+		freetype2->putText(result, "Acc: "s + OtherUtil::retainDecimalPlaces(data["record"]["acc"].get<float>()) + "%"s, cv::Point(579, 975), 32, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
 
 		std::string  PlayerCourse{ std::to_string(playerCourseRanking) };
 		int font_offset_x{ 1975 };
@@ -876,7 +837,7 @@ public:
 		freetype2->putText(result, PlayerCourse, cv::Point(font_offset_x, 78), 36, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
 
 		// 加粗字体
-		freetype2->loadFontData("draw/phi/font/SourceHanSans_SairaHybridRegularHot.ttf", 0);
+		freetype2->loadFontData(this->sairaHybridRegularHot, 0);
 
 		font_offset_x = 1945;
 		if (playerRKS.length() == 4)
@@ -887,13 +848,13 @@ public:
 
 
 		// 中等字体
-		freetype2->loadFontData("draw/phi/font/SourceHanSansCN_SairaCondensed_Hybrid_Medium.ttf", 0);
-		freetype2->putText(result, playerData["record"]["title"], cv::Point(119, 272) + cv::Point(5, 3), 84, cv::Scalar(5, 5, 5), -1, cv::LINE_AA, true);
-		freetype2->putText(result, playerData["record"]["title"], cv::Point(119, 272), 84, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+		freetype2->loadFontData(this->SourceHanSansCNMedium90Y, 0);
+		freetype2->putText(result, data["record"]["title"], cv::Point(119, 272) + cv::Point(5, 3), 84, cv::Scalar(5, 5, 5), -1, cv::LINE_AA, true);
+		freetype2->putText(result, data["record"]["title"], cv::Point(119, 272), 84, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
 
 		freetype2->putText(result, playerName, cv::Point(player_form_offset_x + 52, 107), 48, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
 
-		freetype2->loadFontData("draw/phi/font/AdobeStdR.otf", 0);
+		freetype2->loadFontData(this->adobeStdR, 0);
 
 		freetype2->putText(result, "Generated by tomato Team - Phigros.", cv::Point(1, 1059), 16, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
 		freetype2.release();
@@ -906,61 +867,40 @@ public:
 		Json api_data{};
 		
 		// ======================================
-		httplib::Client client(Global::PhiPlayDataAPI, 8299);
-		// 创建Authorization头部
-		std::string auth_header = "Bearer "s + auth_token.data();
 
-		// 创建Get请求
-		httplib::Headers headers = {
-			{"Authorization", auth_header},
-			{"SessionToken", player_session_token.data()},
-		};
+		constexpr std::chrono::seconds timeout{ 30s };
 
-		bool flag{ false };
-		self::HTTPException httpexception;
-		constexpr std::chrono::seconds playerTimeout{ 30s };
-		std::future<Json> future{ std::async(std::launch::async,[&]()->Json {
-			httplib::Result res { client.Get("/proxy/phi/best?songid="s + song_id.data() + "&level="s + std::to_string(level), headers)};
-			// 到时候加一个超时
-			if (res && res->status == 200) return json::parse(res->body);
+		web::http::client::http_client_config config;
+		config.set_timeout(timeout);
 
-			auto err{ res.error() };
-			if (err != httplib::Error::Success)
-			{
-				throw self::HTTPException(httplib::to_string(err), 500, 1);
+		web::http::client::http_client client(U(Global::PhiAPI), config);
+
+		web::uri_builder builder(U("/phi/best"));
+		// 参数添加
+		builder.append_query(U("songid"), U(song_id.data()));
+
+		// 创建第一个HTTP请求, 添加匹配索引
+		web::http::http_request request_add_index(web::http::methods::GET);
+		request_add_index.set_request_uri(builder.to_string());
+		request_add_index.headers().add("Content-Type", "application/json");
+		request_add_index.headers().add("Authorization", "Bearer "s + auth_token.data());
+		request_add_index.headers().add("SessionToken", player_session_token.data());
+
+		auto response = client.request(request_add_index).get();
+
+		{
+			auto status_code{ response.status_code() };
+			if (status_code >= 300 or status_code < 200) {
+				api_data = Json::parse(response.extract_json().get().serialize());
+				std::string msg{ (api_data.count("detail") ? api_data.at("detail").get<std::string>() : "") };
+				uint16_t status{ api_data.at("status").get<uint16_t>() };
+				throw self::HTTPException(msg, status_code, status);
 			}
-
-			try {
-				if (json::parse(res->body).contains("detail") && json::parse(res->body).contains("status"))
-				{
-					httpexception = self::HTTPException(json::parse(res->body).at("detail").get<std::string>(), res->status, json::parse(res->body).at("status").get<uint16_t>());
-				}
-				else if (json::parse(res->body).contains("detail")) {
-					httpexception = self::HTTPException(json::parse(res->body).at("detail").get<std::string>(), res->status, 1);
-				}
-				httpexception = self::HTTPException("", res->status, json::parse(res->body).at("status").get<uint16_t>());
-				flag = true;
-				return Json();
-			}
-			catch (...) {
-				httpexception = self::HTTPException("", res->status, 1);
-				flag = true;
-				return Json();
-			} }
-		) };
-		// --------------------
-		std::future_status status{ future.wait_for(playerTimeout) };
-
-		if (status == std::future_status::timeout) {
-			httpexception = self::HTTPException("请求超时", 408, 2);
-			flag = true;
 		}
-		api_data = future.get();
 
-		if (flag) {
-			throw httpexception;
-		}
+		api_data = Json::parse(response.extract_json().get().serialize());
 		std::exchange(api_data, api_data.at("content"));
+
 		// ======================================
 
 		int playerSocre{ api_data.at("record").at("score").get<int>() },
@@ -1033,7 +973,7 @@ public:
 				h{ 88 },
 				offset_h{ 25 }, max_size_framewk{ 1700 };// 88 * tan15.9 = 25
 
-			freetype2->loadFontData("draw/phi/font/SourceHanSansCN-Medium-90Y.ttf", 0);
+			freetype2->loadFontData(this->SourceHanSansCNMedium90Y, 0);
 			// + 292
 			int offset_w{ 292 + freetype2->getTextSize(playerName, 48, -1, nullptr).width };
 
@@ -1056,7 +996,7 @@ public:
 				}
 			}
 
-			freetype2->loadFontData("draw/phi/font/SourceHanSans_SairaHybridRegularHot.ttf", 0);
+			freetype2->loadFontData(this->sairaHybridRegularHot, 0);
 			cv::Mat playerForm(h, offset_w + 40 + avatar_offset_correlation, CV_8UC4, cv::Scalar(0, 0, 0, 0));
 
 			// 定义平行四边形的四个顶点坐标
@@ -1306,12 +1246,379 @@ public:
 		freetype2->putText(result, OtherUtil::digitSupplementHandle(playerSocre), cv::Point(256, 538) + cv::Point(3, 2), 84, cv::Scalar(67, 67, 67), -1, cv::LINE_AA, false);
 		freetype2->putText(result, OtherUtil::digitSupplementHandle(playerSocre), cv::Point(256, 538), 84, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
 
-		freetype2->loadFontData("draw/phi/font/SourceHanSansCN-Medium-90Y.ttf", 0);
+		freetype2->loadFontData(this->SourceHanSansCNMedium90Y, 0);
 
 		// player name
 		freetype2->putText(result, playerName, cv::Point(player_form_offset_x + 52, 107), 48, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
 
-		freetype2->loadFontData("draw/phi/font/AdobeStdR.otf", 0);
+		freetype2->loadFontData(this->adobeStdR, 0);
+		freetype2->putText(result, "Generated by tomato Team - Phigros.", cv::Point(20, size_h - 36) + cv::Point(3, 4), 28, cv::Scalar(5, 5, 5), -1, cv::LINE_AA, false);
+		freetype2->putText(result, "Generated by tomato Team - Phigros.", cv::Point(20, size_h - 36), 28, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+		freetype2.release();
+
+		return result;
+	}
+	
+	inline cv::Mat drawPlayerSingleInfoModernStyle2(std::string_view song_id, Ubyte level,
+		std::string_view auth_token, std::string_view player_session_token, std::string_view avatar_base64, bool is_game_avatar) override {
+		Json api_data{};
+		
+		// ======================================
+		
+		constexpr std::chrono::seconds timeout{ 30s };
+
+		web::http::client::http_client_config config;
+		config.set_timeout(timeout);
+
+		web::http::client::http_client client(U(Global::PhiAPI), config);
+
+		web::uri_builder builder(U("/phi/best"));
+		// 参数添加
+		builder.append_query(U("songid"), U(song_id.data()));
+
+		// 创建第一个HTTP请求, 添加匹配索引
+		web::http::http_request request_add_index(web::http::methods::GET);
+		request_add_index.set_request_uri(builder.to_string());
+		request_add_index.headers().add("Content-Type", "application/json");
+		request_add_index.headers().add("Authorization", "Bearer "s + auth_token.data());
+		request_add_index.headers().add("SessionToken", player_session_token.data());
+
+		auto response = client.request(request_add_index).get();
+
+		{
+			auto status_code{ response.status_code() };
+			if (status_code >= 300 or status_code < 200) {
+				api_data = Json::parse(response.extract_json().get().serialize());
+				std::string msg{ (api_data.count("detail") ? api_data.at("detail").get<std::string>() : "") };
+				uint16_t status{ api_data.at("status").get<uint16_t>() };
+				throw self::HTTPException(msg, status_code, status);
+			}
+		}
+
+		api_data = Json::parse(response.extract_json().get().serialize());
+		std::exchange(api_data, api_data.at("content"));
+
+		// ======================================
+
+		int playerSocre{ api_data.at("record").at("score").get<int>() },
+			playerCourseRanking{ api_data.at("challengeModeRank").get<int>()};
+		bool playerIsFC{ api_data.at("record").at("isfc").get<bool>() };
+
+		std::string
+			playerName{ api_data.at("playerNickname").get<std::string>() };
+		double player_rks{ api_data.at("rankingScore").get<double>() };
+		int player_form_offset_x{};
+
+		constexpr const int size_w{ 2048 }, size_h{ 1080 };
+		cv::Ptr<freetype::FreeType2> freetype2{ cv::freetype::createFreeType2() };
+		cv::Mat illustration{ cv::imread(Global::PhiResourcePath + api_data.at("record").at("illustrationPath").get<std::string>(),cv::IMREAD_UNCHANGED)};
+
+		cv::Mat rate{ }, courseRating{ };
+		cv::resize(illustration, illustration, cv::Size(size_w, size_h));
+
+		cv::Mat img{ illustration.clone() };
+
+
+		// 设置高斯模糊
+		cv::GaussianBlur(illustration, illustration, cv::Size(0, 0), 50);
+
+		DrawTool::transparentPaste(this->info_modern_form_style2, illustration);
+
+		// 绘制平行四边形矩形
+		cv::Mat shadow{ info_style2_shadow.clone() };
+		cv::Rect rect{ 0, 0, img.size().width - 1, img.size().height };
+		DrawTool::drawParallelogram2(img, rect, 74.1);
+		DrawTool::drawParallelogram2(shadow, rect, 74.1);
+
+		constexpr const int img_pos_x{ 796 }, img_pos_y{ 275 };
+		// DrawTool::transparentPaste(blackTransparentMask, dstImg, img_pos_x, img_pos_y + 4, 0.555f, 0.555f);
+		
+		constexpr const float scale_rate{ 603.0f / 1024.0f }, phi_scale_rate{ 0.8f }, phi_sign_scale_rate{ 0.5f };
+		
+		DrawTool::transparentPaste(img, illustration, img_pos_x, img_pos_y, scale_rate, scale_rate);
+		DrawTool::transparentPaste(shadow, illustration, img_pos_x, img_pos_y, scale_rate, scale_rate);
+		DrawTool::transparentPaste(this->collect_box, illustration, 764, 973);
+		DrawTool::transparentPaste(this->collect_sign, illustration, 936, 982, phi_sign_scale_rate, phi_sign_scale_rate);
+
+		DrawTool::transparentPaste(this->phigros, illustration, 64, 56, phi_scale_rate, phi_scale_rate);
+		// 裁切图像
+		// 左
+		// 获取裁切后的区域
+		// ====================================
+
+		constexpr const int avatar_offset_correlation{ 20 };
+
+		// 玩家框
+		{
+			constexpr const int
+				h{ 88 },
+				offset_h{ 25 }, max_size_framewk{ 1700 };// 88 * tan15.9 = 25
+
+			freetype2->loadFontData(this->SourceHanSansCNMedium90Y, 0);
+			// + 292
+			int offset_w{ 292 + freetype2->getTextSize(playerName, 48, -1, nullptr).width };
+
+			while (offset_w > max_size_framewk) {
+				std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+				std::wstring wstr = converter.from_bytes(playerName);
+
+				wstr.pop_back();
+
+				playerName = converter.to_bytes(wstr);
+				std::string temp{ playerName + "..."s };
+				offset_w = 292 + freetype2->getTextSize(temp, 48, -1, nullptr).width;
+				if (offset_w > max_size_framewk + 60)
+				{
+					continue;
+				}
+				else {
+					playerName = temp;
+					break;
+				}
+			}
+
+			freetype2->loadFontData(this->sairaHybridRegularHot, 0);
+			cv::Mat playerForm(h, offset_w + 40 + avatar_offset_correlation, CV_8UC4, cv::Scalar(0, 0, 0, 0));
+
+			// 定义平行四边形的四个顶点坐标
+			std::vector<cv::Point> points{
+				cv::Point(0, playerForm.size().height),
+				cv::Point(offset_h, 0),
+				cv::Point(playerForm.size().width, 0),
+				cv::Point(playerForm.size().width, playerForm.size().height)
+			};
+
+			// 将顶点坐标存储到一个向量中
+			std::vector<std::vector<cv::Point>> contours;
+			contours.push_back(points);
+			cv::drawContours(playerForm, contours, 0, cv::Scalar(0, 0, 0, 178), -1, LINE_AA);
+
+			player_form_offset_x = size_w - playerForm.cols;
+			DrawTool::transparentPaste(playerForm, illustration, player_form_offset_x, 48);
+			playerForm.release();
+		}
+
+		DrawTool::transparentPaste(playerRKSBox, illustration, 1907 - avatar_offset_correlation, 96);
+
+		// 玩家头像
+		{
+			constexpr const int
+				h{ 120 },
+				offset_h{ 34 };// 120 * tan15.9 = 34//向下取整
+
+			cv::Mat playerHead,
+				playerHeadBox(h, 166, CV_8UC4, cv::Scalar(0, 0, 0, 0));
+
+			const bool avatarHasEnable{ api_data.at("other").at("avatarHasEnable").get<bool>() };
+
+			//cv::Mat playerHead{ cv::imread("draw/test.png", cv::IMREAD_UNCHANGED) };
+			if (is_game_avatar) {
+				playerHead = avatarHasEnable
+					? 
+					cv::imread(Global::PhiResourcePath + api_data.at("other").at("avatarPath").get<std::string>(), cv::IMREAD_UNCHANGED)
+					: 
+					cv::imread("draw/phi/UnknowAvatar.png", cv::IMREAD_UNCHANGED);
+			}
+			else {
+				playerHead = !avatar_base64.empty()
+					? 
+					base64ToMat(avatar_base64.data())
+					: 
+					cv::imread("draw/phi/UnknowAvatar.png", cv::IMREAD_UNCHANGED);
+			}
+
+
+			cv::resize(playerHead, playerHead, cv::Size(150, 150));
+
+			// 定义平行四边形的四个顶点坐标
+			std::vector<cv::Point> points{
+				cv::Point(0, playerHeadBox.size().height),
+				cv::Point(offset_h, 0),
+				cv::Point(playerHeadBox.size().width - 2, 0),
+				cv::Point(playerHeadBox.size().width - offset_h - 2, playerHeadBox.size().height)
+			},
+				points1{
+				cv::Point(30, 21),
+				cv::Point(150 - 2, 21),
+				cv::Point(120 - 2, 129),
+				cv::Point(0, 129),
+				cv::Point(0,150),
+				cv::Point(150,150),
+				cv::Point(150,0),
+				cv::Point(0,0),
+				cv::Point(0,129)
+			};
+
+			// 将顶点坐标存储到一个向量中
+			std::vector<std::vector<cv::Point>> contours{ points };
+			std::vector<std::vector<cv::Point>> contours1{ points1 };
+			//reverse(contours1[0], contours1[0]);
+			//contours.emplace_back(points);
+			//contours1.emplace_back(points1);
+			cv::drawContours(playerHeadBox, contours, 0, cv::Scalar(77, 77, 77, 255), -1, LINE_AA);
+
+			cv::drawContours(playerHead, contours1, 0, cv::Scalar(0, 0, 0, 0), -1, LINE_AA);
+			DrawTool::transparentPaste(playerHeadBox, illustration, 1794 - avatar_offset_correlation, 33);
+			DrawTool::transparentPaste(playerHead, illustration, 1802 - avatar_offset_correlation, 17);
+			playerHeadBox.release();
+			playerHead.release();
+		};
+
+		int updateTimeSizeWidth{};
+
+		// ====================================
+		if (playerCourseRanking >= 500) {
+			courseRating = cv::imread("draw/phi/rating/uniformSize/5.png", cv::IMREAD_UNCHANGED);
+		}
+		else if (playerCourseRanking >= 400) {
+			courseRating = cv::imread("draw/phi/rating/uniformSize/4.png", cv::IMREAD_UNCHANGED);
+		}
+		else if (playerCourseRanking >= 300) {
+			courseRating = cv::imread("draw/phi/rating/uniformSize/3.png", cv::IMREAD_UNCHANGED);
+		}
+		else if (playerCourseRanking >= 200) {
+			courseRating = cv::imread("draw/phi/rating/uniformSize/2.png", cv::IMREAD_UNCHANGED);
+		}
+		else if (playerCourseRanking >= 100) {
+			courseRating = cv::imread("draw/phi/rating/uniformSize/1.png", cv::IMREAD_UNCHANGED);
+		}
+		else {
+			courseRating = cv::imread("draw/phi/rating/uniformSize/0.png", cv::IMREAD_UNCHANGED);
+		}
+		playerCourseRanking = playerCourseRanking % 100;
+
+		DrawTool::transparentPaste(courseRating, illustration, 1942 - avatar_offset_correlation, 49, 0.269f, 0.269f, cv::INTER_AREA);
+
+		if (playerSocre >= 1000000) {
+			rate = cv::imread("draw/phi/rating/uniformSize/phi_new.png", cv::IMREAD_UNCHANGED);
+		}else if (playerIsFC) {
+			rate = cv::imread("draw/phi/rating/uniformSize/V_FC.png", cv::IMREAD_UNCHANGED);
+		}else if (playerSocre >= 960000) {
+			rate = cv::imread("draw/phi/rating/uniformSize/V_new.png", cv::IMREAD_UNCHANGED);
+		}else if (playerSocre >= 920000) {
+			rate = cv::imread("draw/phi/rating/uniformSize/s_new.png", cv::IMREAD_UNCHANGED);
+		}else if (playerSocre >= 880000) {
+			rate = cv::imread("draw/phi/rating/uniformSize/a_new.png", cv::IMREAD_UNCHANGED);
+		}else if (playerSocre >= 820000) {
+			rate = cv::imread("draw/phi/rating/uniformSize/B_new.png", cv::IMREAD_UNCHANGED);
+		}else if (playerSocre >= 700000) {
+			rate = cv::imread("draw/phi/rating/uniformSize/C_new.png", cv::IMREAD_UNCHANGED);
+		}else {
+			rate = cv::imread("draw/phi/rating/uniformSize/F_new.png", cv::IMREAD_UNCHANGED);
+		}
+		DrawTool::transparentPaste(rate, illustration, 606, 301);
+
+		courseRating.release();
+		rate.release();
+		img.release();
+		shadow.release();
+
+		cv::Mat result(illustration.rows, illustration.cols, CV_8UC3);
+
+		int from_to[] = { 0,0, 1,1, 2,2 };
+		mixChannels(&illustration, 1, &result, 1, from_to, 3);
+
+		illustration.release();
+
+		// updateTime
+		{
+			freetype2->putText(result, "Upload Time", cv::Point(971, 1000), 20, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+
+			const std::string updateTimeStr{ api_data.at("updateTime").get<std::string>() };
+			constexpr const int font_size{ 28 }; 
+			const int w_length{ freetype2->getTextSize(updateTimeStr, font_size, -1, nullptr).width };
+			
+			freetype2->putText(result, updateTimeStr, cv::Point(1009 - (w_length / 2), 1034), font_size, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+
+		}
+		std::string  PlayerCourse{ std::to_string(playerCourseRanking) };
+		int font_offset_x{ 1970 };
+		if (PlayerCourse.length() == 1)
+		{
+			font_offset_x = 1982;
+		}
+		// course
+		freetype2->putText(result, std::move(PlayerCourse), cv::Point(font_offset_x - avatar_offset_correlation, 78), 36, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+
+		font_offset_x = 1945;
+		std::string player_rks_str{ OtherUtil::retainDecimalPlaces(player_rks) };
+		if (player_rks_str.length() == 4)
+		{
+			font_offset_x = 1950;
+		}
+		// rks
+		freetype2->putText(result, std::move(player_rks_str), cv::Point(font_offset_x - avatar_offset_correlation, 122), 32, cv::Scalar(0, 0, 0), -1, cv::LINE_AA, true);
+
+		std::string song_name{ api_data.at("record").at("title").get<std::string>() };
+		{
+			int offset_w{ freetype2->getTextSize(song_name, 51, -1, nullptr).width };
+			while (offset_w > 570) {
+				std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+				std::wstring wstr = converter.from_bytes(song_name);
+
+				wstr.pop_back();
+
+				song_name = converter.to_bytes(wstr);
+				std::string temp{ song_name + "..."s };
+				offset_w = freetype2->getTextSize(temp, 51, -1, nullptr).width;
+
+				if (offset_w <= 570)
+				{
+					song_name = temp;
+					break;
+				}
+			}
+			// song title
+			freetype2->putText(result, song_name, cv::Point(323, 318), 51, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+			std::string artist{ api_data.at("record").at("artist").get<std::string>() };
+			offset_w = freetype2->getTextSize(artist, 28, -1, nullptr).width;
+			while (offset_w > 390) {
+				std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+				std::wstring wstr = converter.from_bytes(artist);
+
+				wstr.pop_back();
+
+				artist = converter.to_bytes(wstr);
+				std::string temp{ artist + "..."s };
+				offset_w = freetype2->getTextSize(temp, 28, -1, nullptr).width;
+
+				if (offset_w <= 390)
+				{
+					artist = temp;
+					break;
+				}
+			}
+			// artist
+			freetype2->putText(result, artist, cv::Point(321, 352), 28, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+
+
+			std::string song_level{ api_data.at("record").at("difficulty").get<std::string>() + " Lv."s + OtherUtil::retainDecimalPlaces(api_data.at("record").at("rating").get<double>(), 1) };
+			offset_w = freetype2->getTextSize(song_level, 28, -1, nullptr).width;
+			// lv
+			freetype2->putText(result, song_level, cv::Point(872 - offset_w, 352), 28, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+
+			// rate
+			freetype2->putText(result, OtherUtil::retainDecimalPlaces(api_data.at("record").at("rks").get<double>()), cv::Point(231, 763), 40, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+			
+			std::string acc_str{ OtherUtil::retainDecimalPlaces(api_data.at("record").at("acc").get<double>()) + "%"s };
+
+			offset_w = freetype2->getTextSize(acc_str, 40, -1, nullptr).width;
+			// acc
+			freetype2->putText(result, acc_str, cv::Point(727 - offset_w, 763), 40, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+		}
+		// other symbols
+		freetype2->putText(result, "Best Score", cv::Point(216, 568), 28, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+		freetype2->putText(result, "Rate", cv::Point(228, 791), 24, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+		freetype2->putText(result, "Accuracy", cv::Point(623, 791), 24, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+
+		// score
+		freetype2->putText(result, OtherUtil::digitSupplementHandle(playerSocre), cv::Point(210, 444), 84, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+
+		freetype2->loadFontData(this->SourceHanSansCNMedium90Y, 0);
+
+		// player name
+		freetype2->putText(result, playerName, cv::Point(player_form_offset_x + 52, 107), 48, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+
 		freetype2->putText(result, "Generated by tomato Team - Phigros.", cv::Point(20, size_h - 36) + cv::Point(3, 4), 28, cv::Scalar(5, 5, 5), -1, cv::LINE_AA, false);
 		freetype2->putText(result, "Generated by tomato Team - Phigros.", cv::Point(20, size_h - 36), 28, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
 		freetype2.release();
@@ -1323,61 +1630,33 @@ public:
 		Json api_data{};
 		
 		// ======================================
-		httplib::Client client(Global::PhiPlayDataAPI, 8299);
-		// 创建Authorization头部
-		std::string auth_header = "Bearer "s + auth_token.data();
+		constexpr std::chrono::seconds timeout{ 30s };
 
-		// 创建Get请求
-		httplib::Headers headers = {
-			{"Authorization", auth_header},
-			{"SessionToken", player_session_token.data()},
-		};
+		web::http::client::http_client_config config;
+		config.set_timeout(timeout);
 
+		web::http::client::http_client client(U(Global::PhiAPI), config);
 
-		bool flag{ false };
-		self::HTTPException httpexception;
-		constexpr std::chrono::seconds playerTimeout{ 30s };
-		std::future<Json> future{ std::async(std::launch::async,[&]()->Json {
-			httplib::Result res { client.Get("/proxy/phi/all", headers)};
-			// 到时候加一个超时
-			if (res && res->status == 200) return json::parse(res->body);
+		// 创建第一个HTTP请求, 添加匹配索引
+		web::http::http_request request_add_index(web::http::methods::GET);
+		request_add_index.set_request_uri(U("/phi/all"));
+		request_add_index.headers().add("Content-Type", "application/json");
+		request_add_index.headers().add("Authorization", "Bearer "s + auth_token.data());
+		request_add_index.headers().add("SessionToken", player_session_token.data());
 
-			auto err{ res.error() };
-			if (err != httplib::Error::Success)
-			{
-				throw self::HTTPException(httplib::to_string(err), 500, 1);
+		auto response = client.request(request_add_index).get();
+
+		{
+			auto status_code{ response.status_code() };
+			if (status_code >= 300 or status_code < 200) {
+				api_data = Json::parse(response.extract_json().get().serialize());
+				std::string msg{ (api_data.count("detail") ? api_data.at("detail").get<std::string>() : "") };
+				uint16_t status{ api_data.at("status").get<uint16_t>() };
+				throw self::HTTPException(msg, status_code, status);
 			}
-
-			try {
-				if (json::parse(res->body).contains("detail") && json::parse(res->body).contains("status"))
-				{
-					httpexception = self::HTTPException(json::parse(res->body).at("detail").get<std::string>(), res->status, json::parse(res->body).at("status").get<uint16_t>());
-				}
-				else if (json::parse(res->body).contains("detail")) {
-					httpexception = self::HTTPException(json::parse(res->body).at("detail").get<std::string>(), res->status, 1);
-				}
-				httpexception = self::HTTPException("", res->status, json::parse(res->body).at("status").get<uint16_t>());
-				flag = true;
-				return Json();
-			}
-			catch (...) {
-				httpexception = self::HTTPException("", res->status, 1);
-				flag = true;
-				return Json();
-			} }
-		) };
-		// --------------------
-		std::future_status status{ future.wait_for(playerTimeout) };
-
-		if (status == std::future_status::timeout) {
-			httpexception = self::HTTPException("请求超时", 408, 2);
-			flag = true;
 		}
-		api_data = future.get();
 
-		if (flag) {
-			throw httpexception;
-		}
+		api_data = Json::parse(response.extract_json().get().serialize());
 		std::exchange(api_data, api_data.at("content"));
 
 		//std::cout << api_data << std::endl;
@@ -1724,7 +2003,7 @@ public:
 		int from_to[] = { 0,0, 1,1, 2,2 };
 		mixChannels(&draw, 1, &result, 1, from_to, 3);
 		draw.release();
-		freetype2->loadFontData("draw/phi/font/SourceHanSans_SairaHybridRegularHot.ttf", 0);
+		freetype2->loadFontData(this->sairaHybridRegularHot, 0);
 
 		const std::string updateTimeStr{ "Upload Time: "s + api_data.at("updateTime").get<std::string>() };
 		constexpr const int updateSize{ 24 };

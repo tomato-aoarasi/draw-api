@@ -41,34 +41,49 @@ public:
         : m_app{ app }, m_phigros_service{ std::move(phigros_service) } {};
 
     const inline void controller(void) {
-        CROW_ROUTE(m_app, "/phi/drawInfo").methods("GET"_method)([&](const crow::request& req) {
+        CROW_ROUTE(m_app, "/phi/drawInfo").methods("POST"_method)([&](const crow::request& req) {
             crow::response response;
             response.add_header("Cache-Control", "no-cache");
             response.add_header("Pragma", "no-cache");
             try {
-                constexpr const char* PARAMS[]{ "songId","QRcode" };
-                int song_id{};
+                Json body{ Json::parse(req.body) };
+                std::exchange(body, body[0]);
+
+                std::string authorization{ req.get_header_value("Authorization") };
+
+                Json req_body;
+
+                int16_t mode{ 1 };
+                
+                if (body.count("mode")) {
+                    mode = body.at("mode").get<int16_t>();
+                }
+
+                req_body["mode"] = mode;
+
+                switch (mode)
+                {
+                case 0:
+                    req_body["id"] = body.at("id").get<std::string>();
+                    break;
+                case 1:
+                    req_body["id"] = body.at("id").get<int16_t>();
+                    break;
+                default:
+                    throw self::HTTPException("mode doesn't exist.", 400);
+                    break;
+                }
+
                 bool is_qr_code{ false };
-
-                if (OtherUtil::verifyParam(req, PARAMS[0])) {
-                    song_id = std::stoi(req.url_params.get(PARAMS[0]));
-                }
-                else {
-                    response.set_header("Content-Type", "application/json");
-                    response.code = 400;
-                    response.write(StatusCodeHandle::getSimpleJsonResult(400, "parameter 'songId' required and parameter cannot be empty.", 3).dump(amount_spaces));
-                    return response;
-                }
-
-                std::string content{ req.get_header_value(PARAMS[1]) };
+                std::string content{ req.get_header_value("QRcode")};
 
                 if (content.size() != 0)
                     is_qr_code = true;
 
-                LogSystem::logInfo(std::format("[Phigros]绘制曲目信息 ------ ID:{} / QRcode:{}", song_id, content));
+                LogSystem::logInfo(std::format("[Phigros]绘制曲目信息 ------ ID:{} / QRcode:{}", req_body["id"].dump(), content));
 
                 cv::Mat result{ m_phigros_service->drawSongInfomation(
-                    std::move(song_id),std::move(is_qr_code),std::move(content)) };
+                    req_body, is_qr_code, content, authorization) };
 
                 std::vector<uchar> data;
                 cv::imencode(".png", result, data);
@@ -78,6 +93,11 @@ public:
                 response.set_header("Content-Type", "image/png");
                 response.write(imgStr);
                 return response;
+            }
+            catch (const self::HTTPException& e) {
+                response.write(StatusCodeHandle::getSimpleJsonResult(e.getCode(), e.getMessage(), e.getStatus()).dump(amount_spaces));
+                LogSystem::logError(std::format("[Phigros]绘制曲目信息 ------ msg: {} / code: {} / status: {}", e.what(), e.getCode(), e.getStatus()));
+                response.code = e.getCode();
             }
             catch (const self::TimeoutException& e) {
                 LogSystem::logError("[Phigros]绘制曲目信息 ------ API请求超时");
@@ -98,7 +118,6 @@ public:
 
             return response;
             });
-
 
         CROW_ROUTE(m_app, "/phi/drawSingle").methods("POST"_method)([&](const crow::request& req) {
 
@@ -161,6 +180,10 @@ public:
                     LogSystem::logInfo("[Phigros]绘制玩家BEST ------ 风格样式1(NEW)");
                     result = m_phigros_service->drawPlayerSingleInfoModernStyle(song_id, level, authorization, sessionToken, avatar_base64, is_game_avatar);
                     break;
+                case 2:
+                    LogSystem::logInfo("[Phigros]绘制玩家BEST ------ 风格样式2(NEW)");
+                    result = m_phigros_service->drawPlayerSingleInfoModernStyle2(song_id, level, authorization, sessionToken, avatar_base64, is_game_avatar);
+                    break;
                 default:
                     throw self::HTTPException("Style does not exist.", 400);
                 }
@@ -197,9 +220,7 @@ public:
 
             response.set_header("Content-Type", "application/json");
             return response;
-            }
-        );
-
+            });
 
         CROW_ROUTE(m_app, "/phi/drawB19").methods("POST"_method)([&](const crow::request& req) {
 
@@ -260,8 +281,7 @@ public:
 
             response.set_header("Content-Type", "application/json");
             return response;
-            }
-        );
+            });
 
 #ifdef DEBUG
         CROW_ROUTE(m_app, "/phi/test").methods("GET"_method)([&](const crow::request& req) {

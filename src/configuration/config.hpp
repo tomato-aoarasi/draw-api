@@ -41,15 +41,11 @@ using CrowApplication = crow::SimpleApp;
 #define Json nlohmann::json
 #define Ubyte ubyte
 
-class Global final {
-	friend class Config;
-public:
-	inline static const std::string BingAPI{ "http://150.158.89.12:6680"s };
+namespace defined {
+}
 
-	inline static const std::string PhiPlayDataAPI{ "150.158.89.12"s };
-	inline static const std::string PhiUri{ "/api/pgr/findBySong"s };
-	inline static const std::string PhiUrl{ BingAPI + PhiUri };
-	inline static std::string ResourcePath{};
+namespace Global {
+	inline static std::string PhiAPI{};
 	inline static std::string PhiResourcePath{};
 };
 
@@ -108,8 +104,8 @@ public:
 		Parameter::ms_issuer = getConfig()["server"]["token"]["issuer"].as<std::string>();
 		Parameter::ms_port = getConfig()["server"]["port"].as<ushort>();
 		Parameter::ms_concurrency = getConfig()["server"]["concurrency"].as<ubyte>();
-		Global::ResourcePath = getConfig()["server"]["resource-path"].as<std::string>();
-		Global::PhiResourcePath = Global::ResourcePath + "phigros/"s;
+		Global::PhiResourcePath = getConfig()["resource"]["path"]["phigros"].as<std::string>();
+		Global::PhiAPI = getConfig()["api"]["phi"]["url"].as<std::string>();
 	}
 	//得到一个YAML配置文件
 	static const YAML::Node& getConfig(void) {

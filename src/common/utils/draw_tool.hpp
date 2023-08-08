@@ -210,6 +210,67 @@ public:
         channels1[3].release();
         img.release();
     }
+    inline static void drawParallelogram2(cv::Mat img, const cv::Rect& rect, float alpha = 0.0f, float beta = 0.0f, const bool flip = false) {
+        //cv::Rect rect(230, 100, img.size().width, img.size().height);
+        alpha = convert_angle_to_radians<float>(alpha);
+        beta = convert_angle_to_radians<float>(beta);
+        float
+            x0{ static_cast<float>(rect.x) },
+            y0{ static_cast<float>(rect.y) },
+            h{ static_cast<float>(rect.height) },
+            w{ static_cast<float>(rect.width) },
+            x1{ h / tan(alpha) },
+            x2{ (-tan(-beta) * x1 + h + tan(alpha) * w - tan(alpha) * x1) / (tan(alpha) - tan(-beta)) },
+            y2{ tan(-beta) * (x2 - x1) + h };
+
+#ifdef DEBUG
+        std::cout << "Debug:\n"
+            << "x0:" << x0 << "\n"
+            << "y0:" << y0 << "\n"
+            << "x1:" << x1 << "\n"
+            << "x2:" << x2 << "\n"
+            << "y2:" << y2 << "\n"
+            << "h:" << h << "\n"
+            << "w:" << w << "\n"
+
+            << std::endl;
+#endif // DEBUG
+
+        // 创建一组点，将其设置为矩形的四个顶点
+        std::vector<cv::Point> points;
+
+        // 是否翻转
+        if (!flip) {
+            points.emplace_back(cv::Point(x0, h - y0));
+            points.emplace_back(cv::Point(w - x1, y2));
+            points.emplace_back(cv::Point(w - x0, y0));
+            points.emplace_back(cv::Point(x1, h - y2));
+            points.emplace_back(cv::Point(x0, h - y0));
+            points.emplace_back(cv::Point(0, 0));
+            points.emplace_back(cv::Point(w, 0));
+            points.emplace_back(cv::Point(w, h));
+            points.emplace_back(cv::Point(0, h));
+            points.emplace_back(cv::Point(x0, h - y0));
+        }
+        else
+        {
+            points.emplace_back(cv::Point(x1 + x0, h - y0));
+            points.emplace_back(cv::Point(x2, y2));
+            points.emplace_back(cv::Point(w - x1 - x0, y0));
+            points.emplace_back(cv::Point(w - x2, h - y2));
+            points.emplace_back(cv::Point(x1 + x0, h - y0));
+            points.emplace_back(cv::Point(0, 0));
+            points.emplace_back(cv::Point(w, 0));
+            points.emplace_back(cv::Point(w, h));
+            points.emplace_back(cv::Point(0, h));
+            points.emplace_back(cv::Point(x1 + x0, h - y0));
+        }
+
+        std::vector<std::vector<cv::Point>> contours { points };
+        cv::drawContours(img, contours, 0, cv::Scalar(0, 0, 0, 0), -1, LINE_AA);
+        img.release();
+
+    }
 
     /// <summary>
     /// 将一种图片粘贴到另一张图片上
