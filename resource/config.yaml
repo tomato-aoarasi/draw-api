@@ -1,10 +1,10 @@
 log:
-  logger-name: daily_logger
-  filename: logs/daily.txt
+  logger-name: "daily_logger"
+  filename: "logs/daily.txt"
   hour: 2
   minute: 30
 db:
-  path: ./localDB.db
+  path: "./localDB.db"
 api:
   phi:
     url: "http://127.0.0.1:8299/proxy/"
@@ -15,5 +15,5 @@ server:
   concurrency: 0
   port: 8199
   token:
-    secret: HWqBXLYj8$z$ezR9gnihO8K13m#soNN^8WWuHMKDz12Vo6IWb3e6N!M4aHV@tCF3
-    issuer: Bing
+    secret: "HWqBXLYj8$z$ezR9gnihO8K13m#soNN^8WWuHMKDz12Vo6IWb3e6N!M4aHV@tCF3"
+    issuer: "Bing"

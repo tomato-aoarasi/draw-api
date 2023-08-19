@@ -13,6 +13,7 @@
 #include <vector>
 #include <chrono>
 #include <future>
+#include <numbers>
 #include "configuration/config.hpp"
 #include "crow.h"
 
@@ -184,6 +185,11 @@ public:
         (..., (std::cout << args << " "));
         std::cout << std::endl;
     };
+    
+    // 角度转弧度
+    inline static double AngleToArc(double degrees) {
+        return std::numbers::pi / 180.0 * std::fmod(degrees, 360.0);
+    }
 private:
 };
 
