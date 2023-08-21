@@ -173,7 +173,7 @@ public:
 		}
 	};
 
-	inline cv::Mat drawSongInfomation(Json info_param, bool isQRCode, std::string_view QRCodeContent, const std::string& authorization) override {
+	inline cv::Mat drawSongInfomation(const std::string& songid, bool isQRCode, std::string_view QRCodeContent, const std::string& authorization) override {
 		constexpr std::chrono::seconds timeout{ 30s }; // 设置超时时间为 20 秒
 		constexpr const size_t size_w{ 2048 }, size_h{ 1080 };
 
@@ -184,11 +184,12 @@ public:
 
 		web::http::client::http_client client(U(Global::PhiAPI), config);
 		// 创建第一个HTTP请求, 添加匹配索引
-		web::http::http_request request_song(web::http::methods::POST);
-		request_song.set_request_uri("/phi/song"s);
+		web::http::http_request request_song(web::http::methods::GET);
+		web::uri_builder builder_song(U("/phi/song"));
+		builder_song.append_query(U("songid"), U(songid));
+		request_song.set_request_uri(builder_song.to_string());
 		request_song.headers().add("Content-Type", "application/json");
 		request_song.headers().add("Authorization", "Bearer "s + authorization);
-		request_song.set_body(web::json::value::parse(info_param.dump()));
 
 		auto response{ client.request(request_song).get() };
 

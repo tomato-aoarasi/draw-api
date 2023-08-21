@@ -41,38 +41,12 @@ public:
         : m_app{ app }, m_phigros_service{ std::move(phigros_service) } {};
 
     const inline void controller(void) {
-        CROW_ROUTE(m_app, "/phi/drawInfo").methods("POST"_method)([&](const crow::request& req) {
+        CROW_ROUTE(m_app, "/phi/drawInfo").methods("GET"_method)([&](const crow::request& req) {
             crow::response response;
             response.add_header("Cache-Control", "no-cache");
             response.add_header("Pragma", "no-cache");
             try {
-                Json body{ Json::parse(req.body) };
-                std::exchange(body, body[0]);
-
-                std::string authorization{ req.get_header_value("Authorization") };
-
-                Json req_body;
-
-                int16_t mode{ 1 };
-                
-                if (body.count("mode")) {
-                    mode = body.at("mode").get<int16_t>();
-                }
-
-                req_body["mode"] = mode;
-
-                switch (mode)
-                {
-                case 0:
-                    req_body["id"] = body.at("id").get<std::string>();
-                    break;
-                case 1:
-                    req_body["id"] = body.at("id").get<int16_t>();
-                    break;
-                default:
-                    throw self::HTTPException("mode doesn't exist.", 400);
-                    break;
-                }
+                std::string authorization{ req.get_header_value("Authorization") }, songid;
 
                 bool is_qr_code{ false };
                 std::string content{ req.get_header_value("QRcode")};
@@ -80,10 +54,19 @@ public:
                 if (content.size() != 0)
                     is_qr_code = true;
 
-                LogSystem::logInfo(std::format("[Phigros]绘制曲目信息 ------ ID:{} / QRcode:{}", req_body["id"].dump(), content));
 
-                cv::Mat result{ m_phigros_service->drawSongInfomation(
-                    req_body, is_qr_code, content, authorization) };
+                if (OtherUtil::verifyParam(req, "songId")) {
+                    songid = req.url_params.get("songId");
+                }
+                else {
+                    throw self::HTTPException("songId don't exist", 401, 3);
+                }
+
+                LogSystem::logInfo(std::format("[Phigros]绘制曲目信息 ------ SongId: {}", songid));
+
+               cv::Mat result{ m_phigros_service->drawSongInfomation(
+                    songid, is_qr_code, content, authorization) };
+
 
                 std::vector<uchar> data;
                 cv::imencode(".png", result, data);
