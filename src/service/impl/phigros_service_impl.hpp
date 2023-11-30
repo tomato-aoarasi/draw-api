@@ -507,6 +507,7 @@ public:
 		web::uri_builder builder(U("/phi/best"));
 		// 参数添加
 		builder.append_query(U("songid"), U(song_id.data()));
+		builder.append_query(U("level"), U(std::to_string(level)));
 
 		// 创建第一个HTTP请求, 添加匹配索引
 		web::http::http_request request_info(web::http::methods::GET);
@@ -733,7 +734,7 @@ public:
 					?
 					cv::imread(Global::PhiResourcePath + data.at("other").at("avatarPath").get<std::string>(), cv::IMREAD_UNCHANGED)
 					:
-					cv::imread("draw/phi/UnknowAvatar.png", cv::IMREAD_UNCHANGED);
+					cv::imread("draw/phi/avatar.Introduction.png", cv::IMREAD_UNCHANGED);
 			}
 			else {
 				playerHead = !avatar_base64.empty()
@@ -879,6 +880,7 @@ public:
 		web::uri_builder builder(U("/phi/best"));
 		// 参数添加
 		builder.append_query(U("songid"), U(song_id.data()));
+		builder.append_query(U("level"), U(std::to_string(level)));
 
 		// 创建第一个HTTP请求, 添加匹配索引
 		web::http::http_request request_info(web::http::methods::GET);
@@ -1037,7 +1039,7 @@ public:
 					? 
 					cv::imread(Global::PhiResourcePath + api_data.at("other").at("avatarPath").get<std::string>(), cv::IMREAD_UNCHANGED)
 					: 
-					cv::imread("draw/phi/UnknowAvatar.png", cv::IMREAD_UNCHANGED);
+					cv::imread("draw/phi/avatar.Introduction.png", cv::IMREAD_UNCHANGED);
 			}
 			else {
 				playerHead = !avatar_base64.empty()
@@ -1279,6 +1281,7 @@ public:
 		web::uri_builder builder_info(U("/phi/best"));
 		builder_info.append_query(U("songid"), U(song_id.data()));
 		builder_info.append_query(U("info"), U("1"));
+		builder_info.append_query(U("level"), U(std::to_string(level)));
 		request_info.set_request_uri(builder_info.to_string());
 		request_info.headers().add("Content-Type", "application/json");
 		request_info.headers().add("Authorization", "Bearer "s + auth_token.data());
@@ -1425,7 +1428,7 @@ public:
 					? 
 					cv::imread(Global::PhiResourcePath + api_data.at("other").at("avatarPath").get<std::string>(), cv::IMREAD_UNCHANGED)
 					: 
-					cv::imread("draw/phi/UnknowAvatar.png", cv::IMREAD_UNCHANGED);
+					cv::imread("draw/phi/avatar.Introduction.png", cv::IMREAD_UNCHANGED);
 			}
 			else {
 				player_avatar = !avatar_base64.empty()
@@ -1821,7 +1824,7 @@ public:
 					?
 					cv::imread(Global::PhiResourcePath + api_data.at("other").at("avatarPath").get<std::string>(), cv::IMREAD_UNCHANGED)
 					:
-					cv::imread("draw/phi/UnknowAvatar.png", cv::IMREAD_UNCHANGED);
+					cv::imread("draw/phi/avatar.Introduction.png", cv::IMREAD_UNCHANGED);
 			}
 			else {
 				player_avatar = !avatar_base64.empty()
@@ -2208,7 +2211,7 @@ public:
 					h += profile_height_length * magnification;
 				}
 			} else {
-				freetype2->putText(result, "Failed data acquisition", cv::Point(110, 435), 42, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+				//freetype2->putText(result, "Failed data acquisition", cv::Point(110, 435), 42, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
 			}
 
 		}
