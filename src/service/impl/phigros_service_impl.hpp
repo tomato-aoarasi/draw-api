@@ -633,30 +633,30 @@ public:
 		std::string
 			playerName{ data["playerNickname"].get<std::string>() },
 			playerRKS{ OtherUtil::retainDecimalPlaces(data["rankingScore"].get<float>()) };
-		int playerSocre{ data["record"]["score"].get<int>() },
+		int playerScore{ data["record"]["score"].get<int>() },
 			playerCourseRanking{ data["challengeModeRank"].get<int>() };
 		bool playerIsFC{ data["record"]["isfc"].get<bool>() };
 
-		if (playerSocre >= 1000000) {
+		if (playerScore >= 1000000) {
 			rate = cv::imread("draw/phi/rating/uniformSize/phi_old.png", cv::IMREAD_UNCHANGED);
 		}
 		else if (playerIsFC)
 		{
 			rate = cv::imread("draw/phi/rating/uniformSize/V_FC.png", cv::IMREAD_UNCHANGED);
 		}
-		else if (playerSocre >= 960000) {
+		else if (playerScore >= 960000) {
 			rate = cv::imread("draw/phi/rating/uniformSize/V_old.png", cv::IMREAD_UNCHANGED);
 		}
-		else if (playerSocre >= 920000) {
+		else if (playerScore >= 920000) {
 			rate = cv::imread("draw/phi/rating/uniformSize/s_old.png", cv::IMREAD_UNCHANGED);
 		}
-		else if (playerSocre >= 880000) {
+		else if (playerScore >= 880000) {
 			rate = cv::imread("draw/phi/rating/uniformSize/A.png", cv::IMREAD_UNCHANGED);
 		}
-		else if (playerSocre >= 820000) {
+		else if (playerScore >= 820000) {
 			rate = cv::imread("draw/phi/rating/uniformSize/B_old.png", cv::IMREAD_UNCHANGED);
 		}
-		else if (playerSocre >= 700000) {
+		else if (playerScore >= 700000) {
 			rate = cv::imread("draw/phi/rating/uniformSize/C_old.png", cv::IMREAD_UNCHANGED);
 		}
 		else {
@@ -825,7 +825,7 @@ public:
 		freetype2->putText(result, songRating, cv::Point(117, 357) + cv::Point(5, 3), 56, cv::Scalar(5, 5, 5), -1, cv::LINE_AA, true);
 		freetype2->putText(result, songRating, cv::Point(117, 357), 56, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
 
-		freetype2->putText(result, OtherUtil::digitSupplementHandle(playerSocre), cv::Point(246, 970), 96, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
+		freetype2->putText(result, OtherUtil::digitSupplementHandle(playerScore), cv::Point(246, 970), 96, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
 		freetype2->putText(result, "Rate: "s + OtherUtil::retainDecimalPlaces(data["record"]["rks"].get<float>()), cv::Point(584, 937), 40, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
 		freetype2->putText(result, "Acc: "s + OtherUtil::retainDecimalPlaces(data["record"]["acc"].get<float>()) + "%"s, cv::Point(579, 975), 32, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
 
@@ -905,7 +905,7 @@ public:
 
 		// ======================================
 
-		int playerSocre{ api_data.at("record").at("score").get<int>() },
+		int playerScore{ api_data.at("record").at("score").get<int>() },
 			playerCourseRanking{ api_data.at("challengeModeRank").get<int>() };
 		bool playerIsFC{ api_data.at("record").at("isfc").get<bool>() };
 
@@ -1125,25 +1125,25 @@ public:
 
 		DrawTool::transparentPaste(courseRating, dstImg, 1942 - avatar_offset_correlation, 49, 0.269f, 0.269f, cv::INTER_AREA);
 
-		if (playerSocre >= 1000000) {
+		if (playerScore >= 1000000) {
 			rate = cv::imread("draw/phi/rating/uniformSize/phi_new.png", cv::IMREAD_UNCHANGED);
 		}
 		else if (playerIsFC) {
 			rate = cv::imread("draw/phi/rating/uniformSize/V_FC.png", cv::IMREAD_UNCHANGED);
 		}
-		else if (playerSocre >= 960000) {
+		else if (playerScore >= 960000) {
 			rate = cv::imread("draw/phi/rating/uniformSize/V_new.png", cv::IMREAD_UNCHANGED);
 		}
-		else if (playerSocre >= 920000) {
+		else if (playerScore >= 920000) {
 			rate = cv::imread("draw/phi/rating/uniformSize/s_new.png", cv::IMREAD_UNCHANGED);
 		}
-		else if (playerSocre >= 880000) {
+		else if (playerScore >= 880000) {
 			rate = cv::imread("draw/phi/rating/uniformSize/a_new.png", cv::IMREAD_UNCHANGED);
 		}
-		else if (playerSocre >= 820000) {
+		else if (playerScore >= 820000) {
 			rate = cv::imread("draw/phi/rating/uniformSize/B_new.png", cv::IMREAD_UNCHANGED);
 		}
-		else if (playerSocre >= 700000) {
+		else if (playerScore >= 700000) {
 			rate = cv::imread("draw/phi/rating/uniformSize/C_new.png", cv::IMREAD_UNCHANGED);
 		}
 		else {
@@ -1252,8 +1252,8 @@ public:
 		freetype2->putText(result, "Accuracy", cv::Point(623, 791), 24, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
 
 		// score
-		freetype2->putText(result, OtherUtil::digitSupplementHandle(playerSocre), cv::Point(256, 538) + cv::Point(3, 2), 84, cv::Scalar(67, 67, 67), -1, cv::LINE_AA, false);
-		freetype2->putText(result, OtherUtil::digitSupplementHandle(playerSocre), cv::Point(256, 538), 84, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+		freetype2->putText(result, OtherUtil::digitSupplementHandle(playerScore), cv::Point(256, 538) + cv::Point(3, 2), 84, cv::Scalar(67, 67, 67), -1, cv::LINE_AA, false);
+		freetype2->putText(result, OtherUtil::digitSupplementHandle(playerScore), cv::Point(256, 538), 84, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
 
 		freetype2->loadFontData(this->SourceHanSansCNMedium90Y, 0);
 
@@ -1312,7 +1312,7 @@ public:
 		// ======================================
 		//std::cout << api_data << std::endl;
 
-		int playerSocre{ api_data.at("record").at("score").get<int>() },
+		int playerScore{ api_data.at("record").at("score").get<int>() },
 			playerCourseRanking{ api_data.at("challengeModeRank").get<int>() };
 		bool playerIsFC{ api_data.at("record").at("isfc").get<bool>() };
 
@@ -1497,25 +1497,25 @@ public:
 		cv::resize(courseRating, courseRating, cv::Size(), 1.2, 1.2, InterpolationFlags::INTER_LINEAR);
 		DrawTool::transparentPaste(courseRating, illustration, 2018 - avatar_offset_correlation, 56, 0.269f, 0.269f, cv::INTER_AREA);
 
-		if (playerSocre >= 1000000) {
+		if (playerScore >= 1000000) {
 			rate = cv::imread("draw/phi/rating/uniformSize/phi_new.png", cv::IMREAD_UNCHANGED);
 		}
 		else if (playerIsFC) {
 			rate = cv::imread("draw/phi/rating/uniformSize/V_FC.png", cv::IMREAD_UNCHANGED);
 		}
-		else if (playerSocre >= 960000) {
+		else if (playerScore >= 960000) {
 			rate = cv::imread("draw/phi/rating/uniformSize/V_new.png", cv::IMREAD_UNCHANGED);
 		}
-		else if (playerSocre >= 920000) {
+		else if (playerScore >= 920000) {
 			rate = cv::imread("draw/phi/rating/uniformSize/s_new.png", cv::IMREAD_UNCHANGED);
 		}
-		else if (playerSocre >= 880000) {
+		else if (playerScore >= 880000) {
 			rate = cv::imread("draw/phi/rating/uniformSize/a_new.png", cv::IMREAD_UNCHANGED);
 		}
-		else if (playerSocre >= 820000) {
+		else if (playerScore >= 820000) {
 			rate = cv::imread("draw/phi/rating/uniformSize/B_new.png", cv::IMREAD_UNCHANGED);
 		}
-		else if (playerSocre >= 700000) {
+		else if (playerScore >= 700000) {
 			rate = cv::imread("draw/phi/rating/uniformSize/C_new.png", cv::IMREAD_UNCHANGED);
 		}
 		else {
@@ -1689,7 +1689,7 @@ public:
 		}
 
 		// score
-		freetype2->putText(result, OtherUtil::digitSupplementHandle(playerSocre), cv::Point(210, 412), 84, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
+		freetype2->putText(result, OtherUtil::digitSupplementHandle(playerScore), cv::Point(210, 412), 84, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
 
 		// player name
 		freetype2->putText(result, playerName, cv::Point(player_form_offset_x + 55, 130), player_name_size, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, true);
@@ -1908,7 +1908,7 @@ public:
 
 			// 含phi记录
 			if (is_phi) {
-				int socre{ api_data.at("best_list").at("phi").at("score").get<int>() };
+				int score{ api_data.at("best_list").at("phi").at("score").get<int>() };
 				bool is_fc{ api_data.at("best_list").at("phi").at("isfc").get<bool>() };
 				cv::Mat illustration{ cv::imread(Global::PhiResourcePath + api_data.at("best_list").at("phi").at("illustrationPath").get<std::string>(),cv::IMREAD_UNCHANGED) }, rate{ }, difficulty_box(cv::Size(48, 21), CV_8UC4, cv::Scalar(0, 0, 0, 0));
 
@@ -1944,25 +1944,25 @@ public:
 				}
 				*/
 
-				if (socre >= 1000000) {
+				if (score >= 1000000) {
 					rate = cv::imread("draw/phi/rating/uniformSize/phi_new.png", cv::IMREAD_UNCHANGED);
 				}
 				else if (is_fc) {
 					rate = cv::imread("draw/phi/rating/uniformSize/V_FC.png", cv::IMREAD_UNCHANGED);
 				}
-				else if (socre >= 960000) {
+				else if (score >= 960000) {
 					rate = cv::imread("draw/phi/rating/uniformSize/V_new.png", cv::IMREAD_UNCHANGED);
 				}
-				else if (socre >= 920000) {
+				else if (score >= 920000) {
 					rate = cv::imread("draw/phi/rating/uniformSize/s_new.png", cv::IMREAD_UNCHANGED);
 				}
-				else if (socre >= 880000) {
+				else if (score >= 880000) {
 					rate = cv::imread("draw/phi/rating/uniformSize/a_new.png", cv::IMREAD_UNCHANGED);
 				}
-				else if (socre >= 820000) {
+				else if (score >= 820000) {
 					rate = cv::imread("draw/phi/rating/uniformSize/B_new.png", cv::IMREAD_UNCHANGED);
 				}
-				else if (socre >= 700000) {
+				else if (score >= 700000) {
 					rate = cv::imread("draw/phi/rating/uniformSize/C_new.png", cv::IMREAD_UNCHANGED);
 				}
 				else {
@@ -1989,7 +1989,7 @@ public:
 
 
 				if (item <= all_data_size - 1) {
-					int socre{ player_all_data.at(item).at("score").get<int>() };
+					int score{ player_all_data.at(item).at("score").get<int>() };
 					bool is_fc{ player_all_data.at(item).at("isfc").get<bool>() };
 					std::string difficulty{ player_all_data.at(item).at("difficulty").get<std::string>() };
 					cv::Mat illustration{ cv::imread(Global::PhiResourcePath + player_all_data.at(item).at("illustrationPath").get<std::string>(), cv::IMREAD_UNCHANGED) };
@@ -2025,25 +2025,25 @@ public:
 					}
 					*/
 
-					if (socre >= 1000000) {
+					if (score >= 1000000) {
 						rate = cv::imread("draw/phi/rating/uniformSize/phi_new.png", cv::IMREAD_UNCHANGED);
 					}
 					else if (is_fc) {
 						rate = cv::imread("draw/phi/rating/uniformSize/V_FC.png", cv::IMREAD_UNCHANGED);
 					}
-					else if (socre >= 960000) {
+					else if (score >= 960000) {
 						rate = cv::imread("draw/phi/rating/uniformSize/V_new.png", cv::IMREAD_UNCHANGED);
 					}
-					else if (socre >= 920000) {
+					else if (score >= 920000) {
 						rate = cv::imread("draw/phi/rating/uniformSize/s_new.png", cv::IMREAD_UNCHANGED);
 					}
-					else if (socre >= 880000) {
+					else if (score >= 880000) {
 						rate = cv::imread("draw/phi/rating/uniformSize/a_new.png", cv::IMREAD_UNCHANGED);
 					}
-					else if (socre >= 820000) {
+					else if (score >= 820000) {
 						rate = cv::imread("draw/phi/rating/uniformSize/B_new.png", cv::IMREAD_UNCHANGED);
 					}
-					else if (socre >= 700000) {
+					else if (score >= 700000) {
 						rate = cv::imread("draw/phi/rating/uniformSize/C_new.png", cv::IMREAD_UNCHANGED);
 					}
 					else {
@@ -2335,7 +2335,7 @@ public:
 				{
 					constexpr const int font_size{ 18 };
 					std::string
-						rks{ OtherUtil::retainDecimalPlaces(api_data.at("best_list").at("phi").at("rankingSocre").get<double>()) },
+						rks{ OtherUtil::retainDecimalPlaces(api_data.at("best_list").at("phi").at("rankingScore").get<double>()) },
 						acc{ OtherUtil::retainDecimalPlaces(api_data.at("best_list").at("phi").at("acc").get<double>()) + "%"s };
 					freetype2->putText(result, rks, cv::Point(422 + 21, 622 + 143), font_size, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
 					freetype2->putText(result, acc, cv::Point(422 + 76, 622 + 143), font_size, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
@@ -2416,7 +2416,7 @@ public:
 					{
 						constexpr const int font_size{ 18 };
 						std::string
-							rks{ OtherUtil::retainDecimalPlaces(player_all_data.at(item).at("rankingSocre").get<double>()) },
+							rks{ OtherUtil::retainDecimalPlaces(player_all_data.at(item).at("rankingScore").get<double>()) },
 							acc{ OtherUtil::retainDecimalPlaces(player_all_data.at(item).at("acc").get<double>()) + "%"s };
 						freetype2->putText(result, rks, cv::Point(61 + column * 361 + 21, row_temp + 143), font_size, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
 						freetype2->putText(result, acc, cv::Point(61 + column * 361 + 76, row_temp + 143), font_size, cv::Scalar(255, 255, 255), -1, cv::LINE_AA, false);
