@@ -214,7 +214,7 @@ public:
             response.add_header("Pragma", "no-cache");
             try {
                 Json jsonData{ json::parse(req.body) };
-
+                bool is_ap19{ false };
                 std::exchange(jsonData, jsonData[0]);
 
                 if (jsonData.contains("avatar_base64")) {
@@ -224,6 +224,10 @@ public:
                     LogSystem::logInfo("[Phigros]绘制玩家Best 19 ------ 游戏内头像");
                     is_game_avatar = jsonData["is_game_avatar"].get<bool>();
                 }
+                if (jsonData.contains("is_ap19")) {
+                    LogSystem::logInfo("[Phigros]绘制玩家AP 19 ------ AP19绘制");
+                    is_ap19 = jsonData["is_ap19"].get<bool>();
+                }
                 
                 std::string
                     authorization{ req.get_header_value("Authorization") },
@@ -231,7 +235,7 @@ public:
 
                 LogSystem::logInfo(std::format("[Phigros]绘制玩家Best 19 ------ SessionToken:{}", sessionToken));
 
-                cv::Mat result{ m_phigros_service->drawB19(authorization, sessionToken, avatar_base64, is_game_avatar) };
+                cv::Mat result{ m_phigros_service->drawB19(authorization, sessionToken, avatar_base64, is_game_avatar, is_ap19) };
                 std::vector<uchar> data;
                 cv::imencode(".png", result, data);
                 result.release();

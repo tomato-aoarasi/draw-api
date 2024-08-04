@@ -1703,11 +1703,16 @@ public:
 		return result;
 	}
 
-	inline cv::Mat drawB19(std::string_view auth_token, std::string_view  player_session_token, std::string_view avatar_base64, bool is_game_avatar) override {
+	inline cv::Mat drawB19(std::string_view auth_token, std::string_view  player_session_token, std::string_view avatar_base64, bool is_game_avatar, bool is_ap19) override {
 		Json api_data{};
 
 		// ======================================
 		constexpr std::chrono::seconds timeout{ 30s };
+
+		std::string uri{ "/phi/all" };
+		if (is_ap19) {
+			uri += "?is_aplist=1";
+		}
 
 		web::http::client::http_client_config config;
 		config.set_timeout(timeout);
@@ -1716,7 +1721,7 @@ public:
 
 		// 创建第一个HTTP请求, 添加匹配索引
 		web::http::http_request request_all(web::http::methods::GET);
-		request_all.set_request_uri(U("/phi/all"));
+		request_all.set_request_uri(U(uri));
 		request_all.headers().add("Content-Type", "application/json");
 		request_all.headers().add("Authorization", "Bearer "s + auth_token.data());
 		request_all.headers().add("SessionToken", player_session_token.data());
@@ -1738,9 +1743,18 @@ public:
 
 		//std::cout << api_data << std::endl;
 
-		std::vector<Json> player_all_data = api_data.at("best_list").at("best").get<std::vector<Json>>();
+		auto player_all_data{ 
+			is_ap19
+			? 
+			api_data.at("best_list").at("phis")
+			: 
+			api_data.at("best_list").at("best")
+		};
+
+		std::exchange(player_all_data, player_all_data[0]);
 
 		std::size_t all_data_size{ player_all_data.size() };
+
 		bool is_phi{ api_data.at("best_list").at("is_phi").get<bool>() };
 
 		// =======================================================
@@ -1992,6 +2006,7 @@ public:
 					int score{ player_all_data.at(item).at("score").get<int>() };
 					bool is_fc{ player_all_data.at(item).at("isfc").get<bool>() };
 					std::string difficulty{ player_all_data.at(item).at("difficulty").get<std::string>() };
+					
 					cv::Mat illustration{ cv::imread(Global::PhiResourcePath + player_all_data.at(item).at("illustrationPath").get<std::string>(), cv::IMREAD_UNCHANGED) };
 
 					int difficulty_width_offset{ static_cast<int>(difficulty_box.rows * std::tan(15.9 * std::numbers::pi / 180.0)) };

@@ -11,7 +11,7 @@ CACHE STRING "Vcpkg toolchain file")
 # CMAKE默认设置release版
 set(CMAKE_BUILD_TYPE"Release" CACHE STRING"" FORCE)
 
-project ("CrowProject")
+project ("draw-process")
 
 set(CMAKE_C_COMPILER "/usr/local/bin/gcc")
 set(CMAKE_C_COMPILER "/usr/bin/gcc")
